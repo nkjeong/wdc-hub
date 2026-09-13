@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 카테고리관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/categories.css}">
+</head>
+<!-- data-api-base: 카테고리 JSON API 기본 경로. categories.js에서 fetch 호출 시 사용합니다. -->
+<body th:attr="data-api-base=@{/admin/categories}">
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='categories')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='카테고리명으로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText='관',
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">카테고리관리<span>1차 카테고리를 선택하면 2차가, 2차를 선택하면 3차 목록이 나타나요</span></div>
+      </div>
+
+      <div class="row-3">
+
+        <!-- 1차 카테고리 -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">1차 카테고리<span class="n" id="cat1Count">0건</span></div>
+          </div>
+          <div class="panel-body">
+            <form id="cat1AddForm" class="cat-add-form">
+              <input type="text" id="cat1NameInput" placeholder="최상위 카테고리명" maxlength="100" required>
+              <button type="submit" class="btn gold">추가</button>
+            </form>
+            <ul class="cat-list" id="cat1List"></ul>
+          </div>
+        </div>
+
+        <!-- 2차 카테고리 -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">2차 카테고리<span class="n" id="cat2Count">0건</span></div>
+          </div>
+          <div class="panel-body">
+            <div class="cat-empty-hint" id="cat2Hint">왼쪽에서 1차 카테고리를 선택하세요</div>
+            <form id="cat2AddForm" class="cat-add-form" style="display:none;">
+              <input type="text" id="cat2NameInput" placeholder="중간 카테고리명" maxlength="100" required>
+              <button type="submit" class="btn gold">추가</button>
+            </form>
+            <ul class="cat-list" id="cat2List"></ul>
+          </div>
+        </div>
+
+        <!-- 3차 카테고리 -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">3차 카테고리<span class="n" id="cat3Count">0건</span></div>
+          </div>
+          <div class="panel-body">
+            <div class="cat-empty-hint" id="cat3Hint">중간 카테고리를 선택하세요</div>
+            <form id="cat3AddForm" class="cat-add-form" style="display:none;">
+              <input type="text" id="cat3NameInput" placeholder="최하위 카테고리명" maxlength="100" required>
+              <button type="submit" class="btn gold">추가</button>
+            </form>
+            <ul class="cat-list" id="cat3List"></ul>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/categories.js}"></script>
+</body>
+</html>

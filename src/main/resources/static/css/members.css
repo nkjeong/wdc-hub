@@ -1,0 +1,72 @@
+/* admin/members 페이지 전용 — dashboard.css 위에 얹어서 씁니다 */
+
+.status-pill{
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px;
+  font-family:var(--mono);
+}
+.status-pill::before{ content:""; width:6px; height:6px; border-radius:50%; }
+
+.status-pill.pending{ background:rgba(212,166,42,.12); color:var(--gold); }
+.status-pill.pending::before{ background:var(--gold); }
+
+.status-pill.approved{ background:rgba(52,201,126,.12); color:var(--green); }
+.status-pill.approved::before{ background:var(--green); }
+
+.status-pill.rejected{ background:rgba(240,97,91,.12); color:var(--red); }
+.status-pill.rejected::before{ background:var(--red); }
+
+.status-pill.suspended{ background:var(--surface-2); color:var(--text-faint); }
+.status-pill.suspended::before{ background:var(--text-faint); }
+
+.row-actions{ display:flex; gap:6px; }
+.row-actions form{ display:inline; }
+
+.btn-approve, .btn-reject{
+  font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--text-dim);
+}
+.btn-approve{ border-color:var(--gold); color:var(--gold); }
+.btn-approve:hover{ background:var(--gold); color:#1A1400; }
+.btn-reject:hover{ background:var(--red); color:#fff; border-color:var(--red); }
+
+.empty-row td{ text-align:center; color:var(--text-faint); padding:32px 16px; font-size:13px; }
+
+.member-name{ font-weight:600; }
+.member-sub{ font-size:11.5px; color:var(--text-faint); margin-top:2px; }
+
+/* ---- 회사명 클릭 → Offcanvas 트리거 버튼 ---- */
+.company-link{
+  background:none; border:none; padding:0; margin:0;
+  color:var(--text); font-size:12.8px; font-weight:600; font-family:inherit;
+  cursor:pointer; text-underline-offset:3px;
+  text-decoration:underline; text-decoration-color:transparent;
+  transition:color .12s ease, text-decoration-color .12s ease;
+}
+.company-link:hover{ color:var(--gold); text-decoration-color:var(--gold); }
+
+/* ---- Bootstrap Offcanvas를 PUMGA 다크 테마에 맞게 덮어씁니다 ---- */
+.offcanvas{
+  background:var(--surface);
+  color:var(--text);
+  border-left:1px solid var(--line);
+  width:380px;
+}
+.offcanvas-header{ border-bottom:1px solid var(--line-soft); padding:18px 20px; align-items:flex-start; }
+.offcanvas-title{ font-size:15px; font-weight:700; }
+.offcanvas-body{ padding:20px; }
+
+.detail-section-title{
+  font-size:11.5px; font-weight:700; color:var(--gold);
+  margin:22px 0 6px; letter-spacing:.02em;
+}
+.detail-section-title:first-child{ margin-top:0; }
+
+.detail-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:12.8px;
+}
+.detail-row .k{ color:var(--text-faint); flex-shrink:0; }
+.detail-row .v{ color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
+.detail-row a.v{ color:var(--gold); text-decoration:none; }
+.detail-row a.v:hover{ text-decoration:underline; }

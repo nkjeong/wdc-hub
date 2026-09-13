@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 로그인</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/login.css}">
+</head>
+<body>
+
+<div class="page">
+  <div class="layout">
+
+    <div class="brand-row">
+      <div class="brand">
+        <div class="brand-mark"><img th:src="@{/images/logo.png}" alt="WDC-HUB 로고"></div>
+        <div>
+          <div class="brand-name">WDC-HUB</div>
+          <div class="brand-sub">WMULLYU DATA CENTER</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEFT: 상품 데이터 -->
+    <div class="side-panel left">
+      <div>
+        <div class="panel-eyebrow mono">PRODUCT DATA</div>
+        <div class="panel-heading">번들·수입·일반<br>상품 데이터를<br>매일 업데이트합니다</div>
+        <p class="panel-sub" style="margin-top:10px;">소비자가와 공급가, 마진율까지 셀러가 바로 쓸 수 있게 정리해드려요.</p>
+      </div>
+
+      <div class="mini-feature">
+        <div class="mini-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg></div>
+        <div><div class="mini-feature-tt">상품 데이터 4,182건</div><div class="mini-feature-sub">번들·수입·일반 상품 소비자가·공급가</div></div>
+      </div>
+      <div class="mini-feature">
+        <div class="mini-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h2M16 10h2"/></svg></div>
+        <div><div class="mini-feature-tt">판매가 계산기</div><div class="mini-feature-sub">목표 마진율에 맞는 권장 판매가 산출</div></div>
+      </div>
+
+      <div class="mini-ticks">
+        <div class="mini-tick up"><span class="dot up"></span>무선 이어폰 번들<b>+4.2%</b></div>
+        <div class="mini-tick down"><span class="dot down"></span>니베아 핸드크림<b>-1.8%</b></div>
+        <div class="mini-tick up"><span class="dot up"></span>캠핑 랜턴 번들<b>+6.7%</b></div>
+      </div>
+    </div>
+
+    <!-- CENTER: 로그인 폼 -->
+    <div class="center-panel">
+      <div class="login-card">
+        <div class="form-head">
+          <div class="eyebrow mono">SELLER LOGIN</div>
+          <h2>로그인</h2>
+          <p>셀러 계정으로 로그인하고 대시보드를 확인하세요</p>
+        </div>
+
+        <div th:if="${param.error}" class="login-error">
+          아이디 또는 비밀번호가 올바르지 않습니다.
+        </div>
+
+        <form th:action="@{/login}" method="post">
+          <div class="field">
+            <label for="loginId">아이디</label>
+            <div class="field-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.8-3.6 5-5.4 7.5-5.4s5.7 1.8 7.5 5.4"/></svg>
+              <input id="loginId" name="username" type="text" placeholder="아이디를 입력하세요" autocomplete="username">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="loginPw">비밀번호</label>
+            <div class="field-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input id="loginPw" name="password" type="password" placeholder="비밀번호를 입력하세요" autocomplete="current-password">
+              <button type="button" class="toggle-visibility" aria-label="비밀번호 표시">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="remember"><input type="checkbox" name="remember-me">로그인 상태 유지</label>
+            <a class="link-muted" href="#">비밀번호를 잊으셨나요?</a>
+          </div>
+
+          <button type="submit" class="btn-submit">
+            로그인
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+
+        <div class="divider"><span>또는</span></div>
+
+        <div class="signup-note">
+          아직 셀러 계정이 없으신가요?<br>
+          <a th:href="@{/signup}">셀러 가입 신청하기</a> — 검토 후 1~2일 내 승인 안내드려요
+        </div>
+
+        <div class="form-foot">문의 support@wdc-hub.co.kr · 평일 09:00–18:00</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: 쇼핑몰 · 사이트 제작 -->
+    <div class="side-panel right">
+      <div>
+        <div class="panel-eyebrow mono">SITE BUILD</div>
+        <div class="panel-heading">자사몰부터<br>스마트스토어까지<br>제작해드립니다</div>
+        <p class="panel-sub" style="margin-top:10px;">상품 데이터 연동까지 한 번에, 디자인 제작을 대행해드려요.</p>
+      </div>
+
+      <div class="mini-feature">
+        <div class="mini-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>
+        <div><div class="mini-feature-tt">웹사이트 · 쇼핑몰 제작</div><div class="mini-feature-sub">자사몰, 스마트스토어 디자인 제작 대행</div></div>
+      </div>
+      <div class="mini-feature">
+        <div class="mini-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18M3 12h18"/></svg></div>
+        <div><div class="mini-feature-tt">오픈마켓 · 로켓그로스 연동</div><div class="mini-feature-sub">스마트스토어, 쿠팡, 11번가 등 연동 현황</div></div>
+      </div>
+
+      <div class="mini-ticks">
+        <div class="mini-tick up"><span class="dot up"></span>리빙 브랜드 자사몰<b>제작완료</b></div>
+        <div class="mini-tick up"><span class="dot up"></span>수입식품 스마트스토어<b>제작완료</b></div>
+        <div class="mini-tick progress"><span class="dot progress"></span>번들샵 자사몰<b>제작중</b></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="page-foot">© 2026 WDC-HUB. All rights reserved.</div>
+</div>
+
+<script th:src="@{/js/login.js}"></script>
+</body>
+</html>

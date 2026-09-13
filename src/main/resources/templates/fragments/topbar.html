@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  공용 상단바 프래그먼트입니다.
+  페이지마다 검색창 문구, 아바타 글자, 보여줄 버튼이 달라서 파라미터로 받습니다.
+
+  사용 예 (대시보드):
+  <div th:replace="~{fragments/topbar :: topbar(
+        searchPlaceholder='상품명, 제조사, 공급사로 검색',
+        showKbdHint=true,
+        showCategoryBtn=true,
+        avatarText='셀',
+        companyName=${companyName},
+        showExport=true,
+        showCalcBtn=true,
+        showBell=true)}"></div>
+
+  사용 예 (회원관리, 버튼 없이 검색창+아바타만):
+  <div th:replace="~{fragments/topbar :: topbar(
+        searchPlaceholder='아이디, 회사명, 이메일로 검색',
+        showKbdHint=false,
+        showCategoryBtn=false,
+        avatarText='관',
+        companyName=${companyName},
+        showExport=false,
+        showCalcBtn=false,
+        showBell=false)}"></div>
+-->
+<div class="topbar" th:fragment="topbar(searchPlaceholder, showKbdHint, showCategoryBtn, avatarText, companyName, showExport, showCalcBtn, showBell)">
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+    <input type="text" th:placeholder="${searchPlaceholder}">
+    <kbd th:if="${showKbdHint}">⌘K</kbd>
+  </div>
+  <button th:if="${showCategoryBtn}" class="btn category-all-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    카테고리 전체보기
+    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <div class="topbar-right">
+    <button th:if="${showExport}" class="btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>엑셀로 내보내기
+    </button>
+    <button th:if="${showCalcBtn}" class="btn gold">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h2M16 10h2"/></svg>판매가 계산기
+    </button>
+    <div th:if="${showBell}" class="icon-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+      <span class="dot"></span>
+    </div>
+
+    <!-- 회사명 + 아바타. 마우스를 올리면 회원정보/로그아웃 드롭다운이 나옵니다. -->
+    <div class="user-menu">
+      <div class="user-trigger">
+        <span class="user-company" th:text="${companyName}">회사명</span>
+        <div class="avatar" th:text="${avatarText}">셀</div>
+      </div>
+      <div class="user-dropdown">
+        <a class="user-dropdown-item" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1.8-3.6 5-5.4 7.5-5.4s5.7 1.8 7.5 5.4"/></svg>
+          회원정보
+        </a>
+        <form th:action="@{/logout}" method="post">
+          <button type="submit" class="user-dropdown-item logout">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+            로그아웃
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

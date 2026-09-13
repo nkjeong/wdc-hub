@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 가입 신청 완료</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/signup.css}">
+</head>
+<body>
+
+<div class="page">
+  <div class="brand">
+    <div class="brand-mark"><img th:src="@{/images/logo.png}" alt="WDC-HUB 로고"></div>
+    <div>
+      <div class="brand-name">WDC-HUB</div>
+      <div class="brand-sub">WMULLYU DATA CENTER</div>
+    </div>
+  </div>
+
+  <div class="card" style="max-width:480px; text-align:center;">
+    <div style="width:52px; height:52px; border-radius:50%; background:var(--gold); color:#1A1400;
+                display:flex; align-items:center; justify-content:center; margin:0 auto 20px;">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4">
+        <path d="M5 12l5 5L20 7"/>
+      </svg>
+    </div>
+
+    <h1 style="font-size:20px; font-weight:800; margin-bottom:10px;">가입 신청이 접수되었습니다</h1>
+    <p style="font-size:13px; color:var(--text-dim); line-height:1.7; margin-bottom:28px;">
+      입력하신 사업자 정보를 검토한 후,<br>
+      영업일 기준 1~2일 내로 승인 결과를 이메일로 안내드릴게요.
+    </p>
+
+    <a th:href="@{/login}" class="btn-submit" style="display:inline-flex; text-decoration:none;">
+      로그인 화면으로 이동
+    </a>
+  </div>
+</div>
+</body>
+</html>
