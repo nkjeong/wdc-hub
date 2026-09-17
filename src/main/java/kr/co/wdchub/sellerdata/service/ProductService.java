@@ -16,10 +16,13 @@ import kr.co.wdchub.sellerdata.service.ProductImageService.MainImageUrls;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** 상품 관리 서비스 — 관리자 전용 등록/수정/삭제 + 회원 공용 조회/응답 변환 */
 @Service
@@ -71,6 +74,17 @@ public class ProductService {
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 상품입니다. id=" + id));
+
+        // DB 레코드를 지우기 전에, 서버 디스크에 남아있는 실제 이미지 파일들도 함께 지웁니다.
+        productImageService.deleteFiles(
+                product.getMainImageThumbUrl(),
+                product.getMainImageDetailUrl(),
+                product.getMainImageMediumUrl(),
+                product.getMainImageOriginalUrl()
+        );
+        productImageService.deleteFileList(product.getDetailImageUrls());
+        productImageService.deleteFileList(product.getDetailImageViewUrls());
+
         productOptionRepository.deleteAllByProduct_Id(id);
         productRepository.delete(product);
     }
@@ -109,12 +123,12 @@ public class ProductService {
                 p.getSellerPrice2(),
                 p.getSellerPrice3(),
                 p.getKeyword(),
-                p.getMainImageThumbUrl(),
-                p.getMainImageDetailUrl(),
-                p.getMainImageMediumUrl(),
-                p.getMainImageOriginalUrl(),
-                p.getDetailImageUrls(),
-                p.getDetailImageViewUrls(),
+                toAbsoluteUrl(p.getMainImageThumbUrl()),
+                toAbsoluteUrl(p.getMainImageDetailUrl()),
+                toAbsoluteUrl(p.getMainImageMediumUrl()),
+                toAbsoluteUrl(p.getMainImageOriginalUrl()),
+                toAbsoluteUrlList(p.getDetailImageUrls()),
+                toAbsoluteUrlList(p.getDetailImageViewUrls()),
                 p.getDescription(),
                 p.getStockOutYn(),
                 p.getDiscontinuedYn(),
@@ -166,18 +180,34 @@ public class ProductService {
      */
     private void applyImages(Product product, MultipartFile mainImageFile, List<MultipartFile> detailImageFiles) {
         if (mainImageFile != null && !mainImageFile.isEmpty()) {
+            // 새 대표이미지를 저장하기 전에, 기존에 있던 4개 파일 경로를 먼저 기억해둡니다 (수정 시 교체되는 경우).
+            String oldThumb = product.getMainImageThumbUrl();
+            String oldDetailView = product.getMainImageDetailUrl();
+            String oldMedium = product.getMainImageMediumUrl();
+            String oldOriginal = product.getMainImageOriginalUrl();
+
             MainImageUrls urls = productImageService.storeMainImage(mainImageFile);
             product.setMainImageThumbUrl(urls.thumbUrl());
             product.setMainImageDetailUrl(urls.detailViewUrl());
             product.setMainImageMediumUrl(urls.mediumUrl());
             product.setMainImageOriginalUrl(urls.originalUrl());
+
+            // 새 파일 저장이 끝난 뒤에 옛날 파일을 지웁니다 (등록 시에는 old 값이 전부 null이라 자연히 아무 일도 안 함).
+            productImageService.deleteFiles(oldThumb, oldDetailView, oldMedium, oldOriginal);
         }
 
         if (detailImageFiles != null && !detailImageFiles.isEmpty()) {
+            // 상세이미지도 마찬가지로, 새로 올리면 기존 목록 전체가 교체되는 방식이라 옛 파일들을 기억해뒀다가 지웁니다.
+            String oldDetailUrls = product.getDetailImageUrls();
+            String oldDetailViewUrls = product.getDetailImageViewUrls();
+
             ProductImageService.DetailImageUrls stored = productImageService.storeDetailImages(detailImageFiles);
             if (stored != null) {
                 product.setDetailImageUrls(stored.originalUrls());
                 product.setDetailImageViewUrls(stored.viewUrls());
+
+                productImageService.deleteFileList(oldDetailUrls);
+                productImageService.deleteFileList(oldDetailViewUrls);
             }
         }
     }
@@ -235,5 +265,27 @@ public class ProductService {
         if (id == null) return null;
         return brandRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다. id=" + id));
+    }
+
+    /**
+     * "uploads/product-images/xxx.jpg" 같은 상대경로를 현재 요청의 스킴/도메인/포트 기준
+     * 절대 URL(예: http://localhost:8080/uploads/product-images/xxx.jpg)로 바꿔줍니다.
+     * 배포 후 실제 도메인으로 접속해도 코드 수정 없이 그 도메인이 그대로 들어갑니다.
+     * (리버스 프록시 뒤에 있다면 X-Forwarded-* 헤더를 스프링이 자동으로 고려합니다.)
+     */
+    private String toAbsoluteUrl(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) return null;
+        String path = relativePath.startsWith("/") ? relativePath : "/" + relativePath;
+        return ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path(path)
+                .toUriString();
+    }
+
+    /** 줄바꿈으로 여러 경로가 이어진 문자열(상세이미지 목록 등)을 한 줄씩 절대 URL로 바꿔서 다시 합칩니다 */
+    private String toAbsoluteUrlList(String newlineSeparatedPaths) {
+        if (newlineSeparatedPaths == null || newlineSeparatedPaths.isBlank()) return null;
+        return Arrays.stream(newlineSeparatedPaths.split("\n"))
+                .map(this::toAbsoluteUrl)
+                .collect(Collectors.joining("\n"));
     }
 }

@@ -46,13 +46,17 @@ public class DashboardController {
         long todayBundleCount = productRepository.countByBundleYnTrueAndCreatedAtBetween(todayStart, todayEnd);
         long todayImportCount = productRepository.countByImportedYnTrueAndCreatedAtBetween(todayStart, todayEnd);
         long todayNormalCount = productRepository.countByCreatedAtBetweenAndBundleYnFalseAndImportedYnFalse(todayStart, todayEnd);
-        long newProductCount = productRepository.countByNewProductYnTrue();
+
+        // "신상품" 카드는 최근 30일, "오늘 신규 등록" 카드는 최근 7일 — 리스트에 뜨는 배지가 사라지는 기준과 동일하게 맞췄습니다.
+        long newProductCount = productRepository.countByNewProductYnTrueAndCreatedAtAfter(todayStart.minusDays(30));
+        long newRegisteredCount = productRepository.countByNewRegisteredYnTrueAndCreatedAtAfter(todayStart.minusDays(7));
 
         model.addAttribute("todayNewCount", todayNewCount);
         model.addAttribute("todayBundleCount", todayBundleCount);
         model.addAttribute("todayImportCount", todayImportCount);
         model.addAttribute("todayNormalCount", todayNormalCount);
         model.addAttribute("newProductCount", newProductCount);
+        model.addAttribute("newRegisteredCount", newRegisteredCount);
 
         // templates/dashboard.html 을 렌더링합니다.
         // 상품 테이블 본문은 dashboard.js가 /products/list를 호출해서 채웁니다.

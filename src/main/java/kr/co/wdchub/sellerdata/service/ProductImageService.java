@@ -115,6 +115,34 @@ public class ProductImageService {
         }
     }
 
+    // ── 파일 삭제 ──────────────────────────────────
+
+    /** 대표이미지 4개(썸네일/500px/800px/원본) 등 개별 경로 여러 개를 한 번에 지웁니다 */
+    public void deleteFiles(String... webPaths) {
+        if (webPaths == null) return;
+        for (String webPath : webPaths) {
+            deleteOneFile(webPath);
+        }
+    }
+
+    /** 상세이미지처럼 줄바꿈으로 여러 경로가 이어진 문자열을 한 줄씩 지웁니다 */
+    public void deleteFileList(String newlineSeparatedPaths) {
+        if (newlineSeparatedPaths == null || newlineSeparatedPaths.isBlank()) return;
+        for (String path : newlineSeparatedPaths.split("\n")) {
+            deleteOneFile(path);
+        }
+    }
+
+    private void deleteOneFile(String webPath) {
+        if (webPath == null || webPath.isBlank()) return;
+        try {
+            Files.deleteIfExists(Paths.get(webPath));
+        } catch (IOException e) {
+            // 파일 하나가 이미 없거나 삭제에 실패해도 나머지 삭제/DB 처리는 계속 진행합니다 (로그만 남김)
+            System.err.println("이미지 파일 삭제 실패: " + webPath + " - " + e.getMessage());
+        }
+    }
+
     // ── 내부 헬퍼 ──────────────────────────────────
 
     private void validate(MultipartFile file) {

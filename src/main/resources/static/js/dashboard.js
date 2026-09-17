@@ -21,10 +21,17 @@
   const won = n => n == null ? '-' : '₩' + Number(n).toLocaleString('ko-KR');
   const catLabel = { bundle:['번들상품','cat-bundle'], import:['수입상품','cat-import'], normal:['일반상품','cat-normal'] };
 
+  // 등록일(createdAt) 기준으로 N일이 지나지 않았는지 확인합니다 (신규등록 배지 7일 만료용).
+  function isWithinDays(createdAt, days) {
+    if (!createdAt) return false;
+    const diffMs = Date.now() - new Date(createdAt).getTime();
+    return diffMs / (1000 * 60 * 60 * 24) <= days;
+  }
+
   /**
    * 서버 ProductResponse를 테이블이 기대하는 모양으로 변환합니다.
    * - 구분(cat): bundleYn/importedYn이 둘 다 켜져 있을 수도 있어서, 번들 > 수입 > 일반 순으로 하나만 대표로 보여줍니다.
-   * - 재고상태(status): discontinuedYn > stockOutYn > newRegisteredYn > 판매중 순으로 우선순위를 둡니다.
+   * - 재고상태(status): discontinuedYn > stockOutYn > newRegisteredYn(등록일 7일 이내) > 판매중 순으로 우선순위를 둡니다.
    */
   function mapProduct(p) {
     let cat = 'normal';
@@ -34,7 +41,7 @@
     let status = 'sell';
     if (p.discontinuedYn) status = 'stop';
     else if (p.stockOutYn) status = 'low';
-    else if (p.newRegisteredYn) status = 'new';
+    else if (p.newRegisteredYn && isWithinDays(p.createdAt, 7)) status = 'new';
 
     const sellerPrice = gradeSellerPrice(p);
     let margin = null;
@@ -67,7 +74,7 @@
     tbody.innerHTML = rows.map(p => {
       const [cLabel, cClass] = catLabel[p.cat];
       const [sLabel, sClass] = statusLabel[p.status];
-      const thumbStyle = p.thumb ? `background-image:url('/${p.thumb}'); background-size:cover; background-position:center;` : '';
+      const thumbStyle = p.thumb ? `background-image:url('${p.thumb}'); background-size:cover; background-position:center;` : '';
       return `<tr data-id="${p.id}">
         <td><div class="p-name"><div class="p-thumb" style="${thumbStyle}"></div><div><div class="p-name-tt">${p.name}</div><div class="p-name-sub">${p.sub}</div></div></div></td>
         <td><span class="cat-badge ${cClass}">${cLabel}</span></td>
@@ -144,15 +151,6 @@
     const unitInfo = [raw.unit, raw.unitQuantity != null ? `${raw.unitQuantity}개` : null, raw.packQuantity != null ? `입수 ${raw.packQuantity}` : null]
       .filter(Boolean).join(' · ');
 
-    const statusBadges = [];
-    if (raw.newRegisteredYn) statusBadges.push('<span class="status-pill newin">신규등록</span>');
-    if (raw.newProductYn) statusBadges.push('<span class="status-pill newin">신상품</span>');
-    if (raw.stockOutYn) statusBadges.push('<span class="status-pill soldout">품절</span>');
-    if (raw.discontinuedYn) statusBadges.push('<span class="status-pill discontinued">단종</span>');
-    if (raw.bundleYn) statusBadges.push('<span class="status-pill etc">번들상품</span>');
-    if (raw.importedYn) statusBadges.push('<span class="status-pill etc">수입상품</span>');
-    if (statusBadges.length === 0) statusBadges.push('<span class="status-pill ok">판매중</span>');
-
     const optionsHtml = (raw.hasOptionYn && raw.options && raw.options.length)
       ? `<ul class="pd-options-list">${raw.options.map((o) => `
           <li><span><span class="pd-opt-name">${escapeHtml(o.optionName)}</span>${escapeHtml(o.optionValue)}</span>
@@ -163,18 +161,15 @@
     const detailSource = raw.detailImageViewUrls || raw.detailImageUrls; // 회원 화면엔 520px 표시용 우선, 없으면 원본
   const detailUrls = detailSource ? detailSource.split('\n').filter(Boolean) : [];
     const detailImagesHtml = detailUrls.length
-      ? detailUrls.map((u) => `<img src="/${escapeHtml(u)}" alt="" loading="lazy">`).join('')
+      ? detailUrls.map((u) => `<img src="${escapeHtml(u)}" alt="" loading="lazy">`).join('')
       : '<div class="pd-detail-images-empty">등록된 상세이미지가 없어요</div>';
 
     return `
       <div class="product-detail-top">
         <div class="pd-image">
-          ${mainImg ? `<img src="/${escapeHtml(mainImg)}" alt="">` : '<div class="pd-image-empty">이미지 없음</div>'}
+          ${mainImg ? `<img src="${escapeHtml(mainImg)}" alt="">` : '<div class="pd-image-empty">이미지 없음</div>'}
         </div>
         <div class="pd-info">
-          <div class="pd-status-row">${statusBadges.join('')}</div>
-          <h3 class="pd-name">${escapeHtml(raw.productName)}</h3>
-
           <div class="pd-price-rows">
             <div class="pd-price-row"><span class="pd-label">소비자가</span><span class="pd-value">${won(raw.consumerPrice)}</span></div>
             <div class="pd-price-row"><span class="pd-label">공급가</span><span class="pd-value gold">${won(supplyPrice)}</span></div>
@@ -215,6 +210,7 @@
 
   function openProductDetailOffcanvas(product) {
     const raw = product.raw;
+    document.getElementById('productDetailOffcanvasLabel').textContent = raw.productName;
     document.getElementById('productDetailOffcanvasBody').innerHTML = buildProductDetailHTML(raw);
     document.getElementById('pdDownloadBtn').addEventListener('click', () => {
       downloadSingleProductExcel(raw);
@@ -241,6 +237,38 @@
     renderRows(rows);
   }
 
+  /** 번들상품 진열 — 번들상품 중 최신 10개 (/products/list가 이미 최신순이라 필터링만 하면 됨) */
+  function renderNewArrivals() {
+    const grid = document.getElementById('newArrivalsGrid');
+    const countEl = document.getElementById('newArrivalsCount');
+    const items = products.filter((p) => p.cat === 'bundle').slice(0, 10);
+
+    countEl.textContent = items.length + '개';
+
+    if (items.length === 0) {
+      grid.innerHTML = '<div class="new-arrivals-empty">등록된 번들상품이 없어요.</div>';
+      return;
+    }
+
+    grid.innerHTML = items.map((p) => `
+      <button type="button" class="new-arrival-card" data-id="${p.id}">
+        <div class="new-arrival-image">
+          ${p.thumb ? `<img src="${escapeHtml(p.thumb)}" alt="">` : '<div class="new-arrival-image-empty">이미지 없음</div>'}
+        </div>
+        <div class="new-arrival-name">${escapeHtml(p.name)}</div>
+        <div class="new-arrival-brand">${escapeHtml(p.maker)}</div>
+        <div class="new-arrival-price">${won(p.supply)}</div>
+      </button>
+    `).join('');
+
+    grid.querySelectorAll('.new-arrival-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const product = products.find((p) => p.id === Number(card.dataset.id));
+        if (product) openProductDetailOffcanvas(product);
+      });
+    });
+  }
+
   async function loadProducts() {
     const tbody = document.getElementById('tbody');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-faint); padding:32px 16px;">불러오는 중...</td></tr>';
@@ -250,6 +278,7 @@
       const list = await res.json(); // /products/list는 이미 최신 등록순으로 정렬돼서 옵니다
       products = list.map(mapProduct);
       updateView();
+      renderNewArrivals();
     } catch (e) {
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-faint); padding:32px 16px;">${e.message}</td></tr>`;
     }

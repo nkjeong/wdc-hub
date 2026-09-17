@@ -6,6 +6,7 @@
 
 const API_BASE = document.body.dataset.apiBase;                 // /admin/products
 const CATEGORY_API_BASE = document.body.dataset.categoryApiBase; // /admin/categories
+const CATEGORY_MENU_API = document.body.dataset.categoryMenuApi; // /categories/menu (매칭 기능용 — 1~3차 전체 트리)
 const BRAND_API = document.body.dataset.brandApi;                 // /admin/brands/list
 
 let allProducts = [];
@@ -49,6 +50,9 @@ function strOrNull(id) {
 /** 서버에 저장된 상대 경로(예: uploads/product-images/xxx.jpg)를 실제 접근 가능한 웹 경로로 변환 */
 function toWebUrl(path) {
   if (!path) return '';
+  // 이제 서버가 http(s)로 시작하는 절대 URL을 내려주므로 그대로 씁니다.
+  // 혹시 옛날 방식(상대경로)이 섞여 있어도 안전하게 동작하도록 남겨둔 처리입니다.
+  if (/^https?:\/\//i.test(path)) return path;
   return path.startsWith('/') ? path : `/${path}`;
 }
 
@@ -368,10 +372,18 @@ async function loadProducts() {
   }
 }
 
+// 등록일(createdAt) 기준으로 N일이 지나지 않았는지 확인합니다.
+function isWithinDays(createdAt, days) {
+  if (!createdAt) return false;
+  const diffMs = Date.now() - new Date(createdAt).getTime();
+  return diffMs / (1000 * 60 * 60 * 24) <= days;
+}
+
 function statusPills(p) {
   const pills = [];
-  if (p.newRegisteredYn) pills.push('<span class="status-pill newin">신규등록</span>');
-  if (p.newProductYn) pills.push('<span class="status-pill newin">신상품</span>');
+  // 신규등록/신상품 배지는 담당자가 켜뒀더라도, 등록일 기준 일정 기간이 지나면 자동으로 사라집니다.
+  if (p.newRegisteredYn && isWithinDays(p.createdAt, 7)) pills.push('<span class="status-pill newin">신규등록</span>');
+  if (p.newProductYn && isWithinDays(p.createdAt, 30)) pills.push('<span class="status-pill newin">신상품</span>');
   if (p.stockOutYn) pills.push('<span class="status-pill soldout">품절</span>');
   if (p.discontinuedYn) pills.push('<span class="status-pill discontinued">단종</span>');
   if (p.bundleYn) pills.push('<span class="status-pill etc">번들상품</span>');
@@ -527,6 +539,140 @@ document.getElementById('btnSaveEdit').addEventListener('click', async () => {
     alert(err.message);
   }
 });
+
+// ── 상품명 → 브랜드/카테고리 자동 매칭 ──────────────
+// 상품명 텍스트 안에 이미 등록된 브랜드명/카테고리명이 그대로 포함되어 있는지 비교하는
+// 단순 텍스트 매칭입니다 (의미를 이해하는 AI 매칭이 아닙니다). 못 찾으면 안내만 하고 그대로 둡니다.
+
+let categoryMenuTreeCache = null;
+
+async function getCategoryMenuTree() {
+  if (categoryMenuTreeCache) return categoryMenuTreeCache;
+  categoryMenuTreeCache = await fetchJSON(CATEGORY_MENU_API);
+  return categoryMenuTreeCache;
+}
+
+/** 후보 목록 중 상품명에 "포함되는" 것들을 찾아, 가장 긴 이름(=가장 구체적인 이름)을 우선으로 고릅니다 */
+function findBestNameMatch(productName, candidates, nameOf) {
+  const matched = candidates.filter((c) => nameOf(c) && productName.includes(nameOf(c)));
+  if (matched.length === 0) return null;
+  return matched.sort((a, b) => nameOf(b).length - nameOf(a).length)[0];
+}
+
+function matchBrand(prefix, productName) {
+  const select = document.getElementById(`${prefix}Brand`);
+  const candidates = Array.from(select.options).filter((o) => o.value !== '');
+  const best = findBestNameMatch(productName, candidates, (o) => o.textContent.trim());
+  if (best) {
+    select.value = best.value;
+    return best.textContent.trim();
+  }
+  return null;
+}
+
+async function matchCategory(prefix, productName) {
+  const tree = await getCategoryMenuTree();
+
+  let bestC1 = findBestNameMatch(productName, tree, (c) => c.categoryName);
+
+  let bestC2 = null;
+  const c2Candidates = tree.flatMap((c1) => (c1.children || []).map((c2) => ({ ...c2, __c1: c1 })));
+  bestC2 = findBestNameMatch(productName, c2Candidates, (c) => c.categoryName);
+  if (bestC2) bestC1 = bestC2.__c1; // 2차가 매칭되면 그 2차의 부모 1차로 맞춰줍니다
+
+  let bestC3 = null;
+  const c3Candidates = c2Candidates.flatMap((c2) => (c2.children || []).map((c3) => ({ ...c3, __c1: c2.__c1, __c2: c2 })));
+  bestC3 = findBestNameMatch(productName, c3Candidates, (c) => c.categoryName);
+  if (bestC3) { bestC1 = bestC3.__c1; bestC2 = bestC3.__c2; }
+
+  if (!bestC1) return null;
+
+  await setCategorySelection(prefix, bestC1.id, bestC2 ? bestC2.id : null, bestC3 ? bestC3.id : null);
+
+  return [bestC1.categoryName, bestC2 && bestC2.categoryName, bestC3 && bestC3.categoryName].filter(Boolean).join(' > ');
+}
+
+async function runMatch(prefix) {
+  const nameInput = document.getElementById(`${prefix}ProductName`);
+  const btn = document.querySelector(`.btn-match[data-match-prefix="${prefix}"]`);
+  const resultEl = document.getElementById(`${prefix}MatchResult`);
+  const productName = nameInput.value.trim();
+
+  if (!productName) {
+    resultEl.className = 'match-result none';
+    resultEl.textContent = '상품명을 먼저 입력해주세요.';
+    nameInput.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  resultEl.className = 'match-result';
+  resultEl.textContent = '매칭 중...';
+
+  try {
+    const brandName = matchBrand(prefix, productName);
+    const categoryPath = await matchCategory(prefix, productName);
+
+    if (brandName && categoryPath) {
+      resultEl.className = 'match-result ok';
+      resultEl.textContent = `브랜드 "${brandName}", 카테고리 "${categoryPath}"를 찾아서 선택했어요.`;
+    } else if (brandName || categoryPath) {
+      resultEl.className = 'match-result partial';
+      const found = [brandName ? `브랜드 "${brandName}"` : null, categoryPath ? `카테고리 "${categoryPath}"` : null].filter(Boolean).join(', ');
+      const notFound = !brandName ? '브랜드는' : '카테고리는';
+      resultEl.textContent = `${found}는 찾았지만, ${notFound} 상품명에서 못 찾았어요. 직접 선택해주세요.`;
+    } else {
+      resultEl.className = 'match-result none';
+      resultEl.textContent = '상품명에서 브랜드/카테고리를 찾지 못했어요. 직접 선택해주세요.';
+    }
+  } catch (e) {
+    resultEl.className = 'match-result none';
+    resultEl.textContent = '매칭 중 오류가 발생했어요. 직접 선택해주세요.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.querySelectorAll('.btn-match').forEach((btn) => {
+  btn.addEventListener('click', () => runMatch(btn.dataset.matchPrefix));
+});
+
+// ── 판매가1 필드에서 Enter로 빠르게 계산 ──────────────
+// "-45"처럼 -로 시작하면: 소비자가의 (100-45)% = 55%를 계산해서 넣습니다.
+// -가 없으면: 그냥 입력한 금액을 그대로 둡니다 (일반적인 숫자 입력).
+function setupSellerPriceShortcut(consumerInputId, sellerInputId) {
+  const sellerInput = document.getElementById(sellerInputId);
+  const consumerInput = document.getElementById(consumerInputId);
+  if (!sellerInput || !consumerInput) return;
+
+  sellerInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+
+    const raw = sellerInput.value.trim();
+    if (!raw.startsWith('-')) return; // -가 없으면 그냥 입력한 금액 그대로 (아무 것도 안 함)
+
+    e.preventDefault(); // 폼 안에 있는 필드라 Enter가 의도치 않게 폼을 제출하는 걸 막습니다
+
+    const percentOff = Math.abs(parseFloat(raw));
+    if (isNaN(percentOff)) return;
+
+    const consumerPrice = parseFloat(consumerInput.value);
+    if (!consumerInput.value || isNaN(consumerPrice)) {
+      alert('소비자가를 먼저 입력해주세요.');
+      consumerInput.focus();
+      return;
+    }
+
+    sellerInput.value = Math.round(consumerPrice * (100 - percentOff) / 100);
+  });
+}
+
+setupSellerPriceShortcut('regConsumerPrice', 'regSellerPrice1');
+setupSellerPriceShortcut('regConsumerPrice', 'regSellerPrice2');
+setupSellerPriceShortcut('regConsumerPrice', 'regSellerPrice3');
+setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice1');
+setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice2');
+setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice3');
 
 // ── 초기 로드 ──────────────────────────────
 

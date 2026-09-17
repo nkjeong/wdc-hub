@@ -49,12 +49,12 @@
           <div class="stat-delta" th:text="'오늘 +' + ${todayNewCount} + '건 등록'">오늘 +0건 등록</div>
         </div>
         <div class="stat-card">
-          <div class="stat-top"><span class="stat-label">오늘 신규 등록</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
-          <div class="stat-value" th:text="${todayNewCount}">0</div>
+          <div class="stat-top"><span class="stat-label">신규 등록[최근7일]</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
+          <div class="stat-value" th:text="${newRegisteredCount}">0</div>
           <div class="stat-delta" th:text="'번들 ' + ${todayBundleCount} + ' · 수입 ' + ${todayImportCount} + ' · 일반 ' + ${todayNormalCount}">번들 0 · 수입 0 · 일반 0</div>
         </div>
         <div class="stat-card">
-          <div class="stat-top"><span class="stat-label">신상품</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7-5.4-4.7 7.1-.7z"/></svg></div></div>
+          <div class="stat-top"><span class="stat-label">신상품[최근30일]</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7-5.4-4.7 7.1-.7z"/></svg></div></div>
           <div class="stat-value" th:text="${#numbers.formatInteger(newProductCount, 1, 'COMMA')}">0</div>
           <div class="stat-delta">전체 상품 중 신상품 표시</div>
         </div>
@@ -68,6 +68,15 @@
           <div class="stat-value" th:text="${#numbers.formatInteger(importedCount, 1, 'COMMA')}">0</div>
           <div class="stat-delta" th:text="'오늘 +' + ${todayImportCount} + '건 등록'">오늘 +0건 등록</div>
         </div>
+      </div>
+
+      <!-- 신규 등록 상품 진열 (최신 10개, 동적) -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">번들상품<span class="n" id="newArrivalsCount">0개</span></div>
+          <a class="panel-action" th:href="@{/products}">전체 상품 보기<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="new-arrivals-grid" id="newArrivalsGrid"></div>
       </div>
 
       <!-- row: table + right col -->
@@ -177,15 +186,14 @@
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-head"><div class="panel-title">쿠팡 로켓그로스 현황</div></div>
-          <div class="panel-body">
-            <div class="kv-list">
-              <div><div class="kv-row"><span class="kv-label">재고 가용률</span><span class="kv-value">72%</span></div><div class="progress"><div style="width:72%;"></div></div></div>
-              <div class="kv-row"><span class="kv-label">등록 상품 수</span><span class="kv-value">128개</span></div>
-              <div class="kv-row"><span class="kv-label">재고 소진 임박</span><span class="kv-value" style="color:var(--amber)">6개</span></div>
-              <div class="kv-row"><span class="kv-label">이번 주 정산 예정액</span><span class="kv-value" style="color:var(--gold)">₩4,820,000</span></div>
-            </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <!-- 통계 그래프 예정 (내용 미정) -->
+          <div class="panel empty-slot-panel" style="flex:1;">
+            <div class="panel-body empty-slot-body">준비 중</div>
+          </div>
+          <!-- 통계 그래프 예정 (내용 미정) -->
+          <div class="panel empty-slot-panel" style="flex:1;">
+            <div class="panel-body empty-slot-body">준비 중</div>
           </div>
         </div>
 

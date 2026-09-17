@@ -64,10 +64,18 @@ function mapProduct(p) {
   };
 }
 
+// 등록일(createdAt) 기준으로 N일이 지나지 않았는지 확인합니다.
+function isWithinDays(createdAt, days) {
+  if (!createdAt) return false;
+  const diffMs = Date.now() - new Date(createdAt).getTime();
+  return diffMs / (1000 * 60 * 60 * 24) <= days;
+}
+
 function statusPills(p) {
   const pills = [];
-  if (p.newRegisteredYn) pills.push('<span class="status-pill newin">신규등록</span>');
-  if (p.newProductYn) pills.push('<span class="status-pill newin">신상품</span>');
+  // 신규등록/신상품 배지는 담당자가 켜뒀더라도, 등록일 기준 일정 기간이 지나면 자동으로 사라집니다.
+  if (p.newRegisteredYn && isWithinDays(p.createdAt, 7)) pills.push('<span class="status-pill newin">신규등록</span>');
+  if (p.newProductYn && isWithinDays(p.createdAt, 30)) pills.push('<span class="status-pill newin">신상품</span>');
   if (p.stockOutYn) pills.push('<span class="status-pill soldout">품절</span>');
   if (p.discontinuedYn) pills.push('<span class="status-pill discontinued">단종</span>');
   if (p.bundleYn) pills.push('<span class="status-pill etc">번들상품</span>');
@@ -154,7 +162,7 @@ function renderTable(rows) {
   tbody.innerHTML = rows.map((p) => `
     <tr data-id="${p.raw.id}">
       <td>${p.thumb
-        ? `<img class="list-thumb" src="/${escapeHtml(p.thumb)}" alt="">`
+        ? `<img class="list-thumb" src="${escapeHtml(p.thumb)}" alt="">`
         : '<div class="list-thumb-empty"></div>'}
       </td>
       <td class="mono">${escapeHtml(p.barcode || '-')}</td>
@@ -256,15 +264,6 @@ function buildProductDetailHTML(raw) {
   const unitInfo = [raw.unit, raw.unitQuantity != null ? `${raw.unitQuantity}개` : null, raw.packQuantity != null ? `입수 ${raw.packQuantity}` : null]
     .filter(Boolean).join(' · ');
 
-  const statusBadges = [];
-  if (raw.newRegisteredYn) statusBadges.push('<span class="status-pill newin">신규등록</span>');
-  if (raw.newProductYn) statusBadges.push('<span class="status-pill newin">신상품</span>');
-  if (raw.stockOutYn) statusBadges.push('<span class="status-pill soldout">품절</span>');
-  if (raw.discontinuedYn) statusBadges.push('<span class="status-pill discontinued">단종</span>');
-  if (raw.bundleYn) statusBadges.push('<span class="status-pill etc">번들상품</span>');
-  if (raw.importedYn) statusBadges.push('<span class="status-pill etc">수입상품</span>');
-  if (statusBadges.length === 0) statusBadges.push('<span class="status-pill ok">판매중</span>');
-
   const optionsHtml = (raw.hasOptionYn && raw.options && raw.options.length)
     ? `<ul class="pd-options-list">${raw.options.map((o) => `
         <li><span><span class="pd-opt-name">${escapeHtml(o.optionName)}</span>${escapeHtml(o.optionValue)}</span>
@@ -275,18 +274,15 @@ function buildProductDetailHTML(raw) {
   const detailSource = raw.detailImageViewUrls || raw.detailImageUrls; // 회원 화면엔 520px 표시용 우선, 없으면 원본
   const detailUrls = detailSource ? detailSource.split('\n').filter(Boolean) : [];
   const detailImagesHtml = detailUrls.length
-    ? detailUrls.map((u) => `<img src="/${escapeHtml(u)}" alt="" loading="lazy">`).join('')
+    ? detailUrls.map((u) => `<img src="${escapeHtml(u)}" alt="" loading="lazy">`).join('')
     : '<div class="pd-detail-images-empty">등록된 상세이미지가 없어요</div>';
 
   return `
     <div class="product-detail-top">
       <div class="pd-image">
-        ${mainImg ? `<img src="/${escapeHtml(mainImg)}" alt="">` : '<div class="pd-image-empty">이미지 없음</div>'}
+        ${mainImg ? `<img src="${escapeHtml(mainImg)}" alt="">` : '<div class="pd-image-empty">이미지 없음</div>'}
       </div>
       <div class="pd-info">
-        <div class="pd-status-row">${statusBadges.join('')}</div>
-        <h3 class="pd-name">${escapeHtml(raw.productName)}</h3>
-
         <div class="pd-price-rows">
           <div class="pd-price-row"><span class="pd-label">소비자가</span><span class="pd-value">${won(raw.consumerPrice)}</span></div>
           <div class="pd-price-row"><span class="pd-label">공급가</span><span class="pd-value gold">${won(supplyPrice)}</span></div>
@@ -327,6 +323,7 @@ function buildProductDetailHTML(raw) {
 
 function openProductDetailOffcanvas(product) {
   const raw = product.raw;
+  document.getElementById('productDetailOffcanvasLabel').textContent = raw.productName;
   document.getElementById('productDetailOffcanvasBody').innerHTML = buildProductDetailHTML(raw);
   document.getElementById('pdDownloadBtn').addEventListener('click', () => {
     downloadExcel([raw], sanitizeFileName(raw.productName || '상품'));
@@ -398,7 +395,7 @@ function renderFeaturedProducts() {
     return `
       <button type="button" class="featured-card" data-brand="${escapeHtml(p.brandName)}">
         <div class="featured-image${p.thumb ? '' : ' featured-image-empty'}">
-          ${p.thumb ? `<img src="/${escapeHtml(p.thumb)}" alt="">` : ''}
+          ${p.thumb ? `<img src="${escapeHtml(p.thumb)}" alt="">` : ''}
         </div>
         <div class="featured-name">${escapeHtml(p.name)}</div>
         <div class="featured-brand">${escapeHtml(p.brandName)}</div>

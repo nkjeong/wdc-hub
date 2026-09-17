@@ -27,35 +27,61 @@
 
     panel.innerHTML = category1List.map((c1) => `
       <div class="cat-mega-col">
-        <div class="cat-mega-col-title">${escapeHtml(c1.categoryName)}</div>
+        <div class="cat-mega-col-title" data-c1-id="${c1.id}">${escapeHtml(c1.categoryName)}</div>
         <ul class="cat-mega-list">
-          ${renderCategory2Items(c1.children)}
+          ${renderCategory2Items(c1.id, c1.children)}
         </ul>
       </div>
     `).join('');
   }
 
-  function renderCategory2Items(category2List) {
+  function renderCategory2Items(c1Id, category2List) {
     if (!category2List || category2List.length === 0) {
       return '<li class="cat-mega-item cat-mega-item-empty">하위 카테고리 없음</li>';
     }
     return category2List.map((c2) => `
-      <li class="cat-mega-item">
+      <li class="cat-mega-item" data-c1-id="${c1Id}" data-c2-id="${c2.id}">
         <span>${escapeHtml(c2.categoryName)}</span>
-        ${renderFlyout(c2.children)}
+        ${renderFlyout(c1Id, c2.id, c2.children)}
       </li>
     `).join('');
   }
 
-  function renderFlyout(category3List) {
+  function renderFlyout(c1Id, c2Id, category3List) {
     if (!category3List || category3List.length === 0) return '';
     return `
       <div class="cat-mega-flyout">
         <ul class="cat-mega-flyout-list">
-          ${category3List.map((c3) => `<li>${escapeHtml(c3.categoryName)}</li>`).join('')}
+          ${category3List.map((c3) => `<li data-c1-id="${c1Id}" data-c2-id="${c2Id}" data-c3-id="${c3.id}">${escapeHtml(c3.categoryName)}</li>`).join('')}
         </ul>
       </div>`;
   }
+
+  // 카테고리(1차/2차/3차 아무거나)를 클릭하면 "카테고리별 상품" 페이지로 이동해서 그 카테고리로 바로 필터링됩니다.
+  function navigateToCategory(c1Id, c2Id, c3Id) {
+    const params = new URLSearchParams();
+    if (c1Id) params.set('category1Id', c1Id);
+    if (c2Id) params.set('category2Id', c2Id);
+    if (c3Id) params.set('category3Id', c3Id);
+    window.location.href = `/products/by-category?${params.toString()}`;
+  }
+
+  panel.addEventListener('click', (e) => {
+    const c3El = e.target.closest('.cat-mega-flyout-list li');
+    if (c3El && c3El.dataset.c3Id) {
+      navigateToCategory(c3El.dataset.c1Id, c3El.dataset.c2Id, c3El.dataset.c3Id);
+      return;
+    }
+    const c2El = e.target.closest('.cat-mega-item');
+    if (c2El && c2El.dataset.c2Id) {
+      navigateToCategory(c2El.dataset.c1Id, c2El.dataset.c2Id, null);
+      return;
+    }
+    const c1El = e.target.closest('.cat-mega-col-title');
+    if (c1El && c1El.dataset.c1Id) {
+      navigateToCategory(c1El.dataset.c1Id, null, null);
+    }
+  });
 
   async function loadMenu() {
     if (loaded || loading) return;

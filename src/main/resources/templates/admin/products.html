@@ -10,7 +10,7 @@
 <link rel="stylesheet" th:href="@{/css/dashboard.css}">
 <link rel="stylesheet" th:href="@{/css/products.css}">
 </head>
-<body th:attr="data-api-base=@{/admin/products}, data-category-api-base=@{/admin/categories}, data-brand-api=@{/admin/brands/list}">
+<body th:attr="data-api-base=@{/admin/products}, data-category-api-base=@{/admin/categories}, data-brand-api=@{/admin/brands/list}, data-category-menu-api=@{/categories/menu}">
 
 <div class="ticker">
   <div class="ticker-track" id="tickerTrack"></div>
@@ -82,7 +82,17 @@
               <div class="calc-field"><label>바코드</label><input type="text" id="regBarcode" class="calc-input"></div>
               <div class="calc-field"><label>품번(모델명)</label><input type="text" id="regProductNumber" class="calc-input"></div>
             </div>
-            <div class="calc-field"><label>상품명<span class="req">*</span></label><input type="text" id="regProductName" class="calc-input" required></div>
+            <div class="calc-field">
+              <label>상품명<span class="req">*</span></label>
+              <div class="field-with-match-btn">
+                <input type="text" id="regProductName" class="calc-input" required>
+                <button type="button" class="btn-match" data-match-prefix="reg" title="상품명에서 브랜드/카테고리를 찾아 자동으로 선택합니다">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="m21 21-4.3-4.3"/></svg>
+                  매칭
+                </button>
+              </div>
+              <div class="match-result" id="regMatchResult"></div>
+            </div>
             <div class="calc-row">
               <div class="calc-field"><label>규격</label><input type="text" id="regSpec" class="calc-input"></div>
               <div class="calc-field"><label>원산지</label><input type="text" id="regCountryOfOrigin" class="calc-input"></div>
@@ -184,7 +194,17 @@
       <div class="calc-field"><label>바코드</label><input type="text" id="editBarcode" class="calc-input"></div>
       <div class="calc-field"><label>품번(모델명)</label><input type="text" id="editProductNumber" class="calc-input"></div>
     </div>
-    <div class="calc-field"><label>상품명<span class="req">*</span></label><input type="text" id="editProductName" class="calc-input" required></div>
+    <div class="calc-field">
+      <label>상품명<span class="req">*</span></label>
+      <div class="field-with-match-btn">
+        <input type="text" id="editProductName" class="calc-input" required>
+        <button type="button" class="btn-match" data-match-prefix="edit" title="상품명에서 브랜드/카테고리를 찾아 자동으로 선택합니다">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"/><path d="m21 21-4.3-4.3"/></svg>
+          매칭
+        </button>
+      </div>
+      <div class="match-result" id="editMatchResult"></div>
+    </div>
     <div class="calc-row">
       <div class="calc-field"><label>규격</label><input type="text" id="editSpec" class="calc-input"></div>
       <div class="calc-field"><label>원산지</label><input type="text" id="editCountryOfOrigin" class="calc-input"></div>

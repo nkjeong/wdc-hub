@@ -12,6 +12,21 @@
 .req{ color:var(--red); font-weight:700; }
 textarea.calc-input{ resize:vertical; font-family:var(--sans); }
 
+/* 상품명 옆 "매칭" 버튼 — 상품명에서 브랜드/카테고리를 찾아 자동 선택 */
+.field-with-match-btn{ display:flex; gap:8px; }
+.field-with-match-btn .calc-input{ flex:1; }
+.btn-match{
+  flex-shrink:0; display:flex; align-items:center; gap:6px; padding:0 14px; border-radius:8px;
+  border:1px solid var(--gold-dim); background:rgba(212,166,42,.1); color:var(--gold);
+  font-size:12.5px; font-weight:700; white-space:nowrap;
+}
+.btn-match:hover{ background:var(--gold); color:#1A1400; }
+.btn-match:disabled{ opacity:.5; }
+.match-result{ font-size:11px; margin-top:6px; min-height:14px; }
+.match-result.ok{ color:var(--green); }
+.match-result.partial{ color:var(--amber); }
+.match-result.none{ color:var(--text-faint); }
+
 /* ---- 파일 업로드 입력 ---- */
 .file-input{
   width:100%; background:var(--bg-raise); border:1px solid var(--line); border-radius:7px;
