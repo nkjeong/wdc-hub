@@ -39,6 +39,11 @@ public class SignupController {
             bindingResult.reject("terms", "이용약관 및 개인정보처리방침에 동의해주세요.");
         }
 
+        // 사업자등록증 첨부 필수 (JS 검증을 우회해서 요청을 보내는 경우까지 막기 위한 서버단 방어)
+        if (form.getBusinessLicenseFile() == null || form.getBusinessLicenseFile().isEmpty()) {
+            bindingResult.rejectValue("businessLicenseFile", "required", "사업자등록증 파일을 첨부해주세요.");
+        }
+
         // 중복 체크는 DB 조회가 필요해서 어노테이션이 아니라 서비스에서 직접 확인합니다.
         if (form.getLoginId() != null && memberService.isLoginIdDuplicate(form.getLoginId())) {
             bindingResult.rejectValue("loginId", "duplicate", "이미 사용 중인 아이디입니다.");

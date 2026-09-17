@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 상품관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/products.css}">
+</head>
+<body th:attr="data-api-base=@{/admin/products}, data-category-api-base=@{/admin/categories}, data-brand-api=@{/admin/brands/list}">
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='products')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 바코드, 품번으로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">상품관리<span>아직 등록된 상품이 없어요. "상품 등록" 탭에서 첫 상품을 등록해보세요</span></div>
+      </div>
+
+      <!-- 탭 -->
+      <div class="tabs" id="productTabs">
+        <div class="tab active" data-tab="list">상품 리스트</div>
+        <div class="tab" data-tab="register">상품 등록</div>
+      </div>
+
+      <!-- 상품 리스트 -->
+      <div class="panel tab-panel" id="productListPanel">
+        <div class="panel-head">
+          <div class="panel-title">전체 상품<span class="n" id="productCount">0건</span></div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>이미지</th>
+                <th>바코드 / 품번</th>
+                <th>상품명</th>
+                <th>카테고리</th>
+                <th>브랜드</th>
+                <th>옵션</th>
+                <th>판매가1</th>
+                <th>상태</th>
+                <th>등록일</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="productTableBody">
+              <tr class="empty-row"><td colspan="10">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 상품 등록 -->
+      <div class="panel tab-panel" id="productRegisterPanel" style="display:none;">
+        <div class="panel-head"><div class="panel-title">상품 등록</div></div>
+        <div class="panel-body">
+          <form id="registerForm">
+
+            <div class="section-label">기본정보</div>
+            <div class="calc-row">
+              <div class="calc-field"><label>바코드</label><input type="text" id="regBarcode" class="calc-input"></div>
+              <div class="calc-field"><label>품번(모델명)</label><input type="text" id="regProductNumber" class="calc-input"></div>
+            </div>
+            <div class="calc-field"><label>상품명<span class="req">*</span></label><input type="text" id="regProductName" class="calc-input" required></div>
+            <div class="calc-row">
+              <div class="calc-field"><label>규격</label><input type="text" id="regSpec" class="calc-input"></div>
+              <div class="calc-field"><label>원산지</label><input type="text" id="regCountryOfOrigin" class="calc-input"></div>
+            </div>
+            <div class="calc-row three">
+              <div class="calc-field"><label>단위</label><input type="text" id="regUnit" class="calc-input" placeholder="예: EA, BOX"></div>
+              <div class="calc-field"><label>단위수량</label><input type="number" id="regUnitQuantity" class="calc-input"></div>
+              <div class="calc-field"><label>입수량/박스당수량</label><input type="number" id="regPackQuantity" class="calc-input"></div>
+            </div>
+
+            <div class="section-label">분류</div>
+            <div class="calc-row three">
+              <div class="calc-field"><label>1차 카테고리</label><select id="regCategory1" class="calc-input"><option value="">선택 안함</option></select></div>
+              <div class="calc-field"><label>2차 카테고리</label><select id="regCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
+              <div class="calc-field"><label>3차 카테고리</label><select id="regCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
+            </div>
+            <div class="calc-field"><label>브랜드</label><select id="regBrand" class="calc-input"><option value="">선택 안함</option></select></div>
+
+            <div class="section-label">가격</div>
+            <div class="calc-row">
+              <div class="calc-field"><label>소비자가(MSRP)</label><input type="number" id="regConsumerPrice" class="calc-input"></div>
+              <div class="calc-field"><label>오픈마켓 권장 판매가</label><input type="number" id="regRecommendedPrice" class="calc-input"></div>
+            </div>
+            <div class="calc-row three">
+              <div class="calc-field"><label>판매가1 (셀러 공급가)</label><input type="number" id="regSellerPrice1" class="calc-input"></div>
+              <div class="calc-field"><label>판매가2</label><input type="number" id="regSellerPrice2" class="calc-input"></div>
+              <div class="calc-field"><label>판매가3</label><input type="number" id="regSellerPrice3" class="calc-input"></div>
+            </div>
+
+            <div class="section-label">이미지</div>
+            <div class="image-fields-row">
+              <div class="main-image-block">
+                <label>대표이미지 (원본 1장 — 자동으로 3개 크기 생성)</label>
+                <input type="file" id="regMainImageFile" class="file-input" accept="image/jpeg,image/png,image/webp">
+                <div class="main-image-preview empty" id="regMainImagePreview"><img alt="" style="display:none;"></div>
+              </div>
+              <div class="detail-image-block">
+                <label>상세이미지 (여러 장 선택 가능, 원본 그대로 저장) — 이 영역만 스크롤돼요</label>
+                <input type="file" id="regDetailImageFiles" class="file-input" accept="image/jpeg,image/png,image/webp" multiple>
+                <div class="detail-image-scroll" id="regDetailImagePreview">
+                  <div class="detail-image-scroll-empty">선택한 이미지가 여기에 미리보기로 표시돼요</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="upload-progress-wrap" id="regProgressWrap" style="display:none;">
+              <div class="upload-progress-track"><div class="upload-progress-bar" id="regProgressBar"></div></div>
+              <div class="upload-progress-label" id="regProgressLabel">업로드 중... 0%</div>
+            </div>
+
+            <div class="section-label">상세설명 · 키워드</div>
+            <div class="calc-field"><label>상세설명</label><textarea id="regDescription" class="calc-input" rows="3"></textarea></div>
+            <div class="calc-field"><label>검색 키워드 (쉼표로 구분)</label><input type="text" id="regKeyword" class="calc-input"></div>
+
+            <div class="section-label">상태</div>
+            <div class="flag-row">
+              <label class="flag-toggle"><input type="checkbox" id="regNewRegisteredYn"><span>신규등록</span></label>
+              <label class="flag-toggle"><input type="checkbox" id="regNewProductYn"><span>신상품</span></label>
+              <label class="flag-toggle"><input type="checkbox" id="regStockOutYn"><span>품절</span></label>
+              <label class="flag-toggle"><input type="checkbox" id="regDiscontinuedYn"><span>단종</span></label>
+              <label class="flag-toggle"><input type="checkbox" id="regBundleYn"><span>번들상품</span></label>
+              <label class="flag-toggle"><input type="checkbox" id="regImportedYn"><span>수입상품</span></label>
+            </div>
+
+            <div class="section-label">옵션</div>
+            <div class="radio-row">
+              <label class="radio-toggle"><input type="radio" name="regHasOptionYn" value="Y"><span>있음</span></label>
+              <label class="radio-toggle"><input type="radio" name="regHasOptionYn" value="N" checked><span>없음</span></label>
+            </div>
+            <div class="option-fields" id="regOptionFields" style="display:none;">
+              <div class="option-rows" id="regOptionRows"></div>
+              <button type="button" class="btn" id="regAddOptionBtn">+ 옵션 추가</button>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn gold">상품 등록</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 상품 수정 Offcanvas (기본보다 넓게) -->
+<div class="offcanvas offcanvas-end product-edit-offcanvas" tabindex="-1" id="productEditOffcanvas" aria-labelledby="productEditOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="productEditOffcanvasLabel">상품 수정</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body">
+    <input type="hidden" id="editId">
+
+    <div class="section-label">기본정보</div>
+    <div class="calc-row">
+      <div class="calc-field"><label>바코드</label><input type="text" id="editBarcode" class="calc-input"></div>
+      <div class="calc-field"><label>품번(모델명)</label><input type="text" id="editProductNumber" class="calc-input"></div>
+    </div>
+    <div class="calc-field"><label>상품명<span class="req">*</span></label><input type="text" id="editProductName" class="calc-input" required></div>
+    <div class="calc-row">
+      <div class="calc-field"><label>규격</label><input type="text" id="editSpec" class="calc-input"></div>
+      <div class="calc-field"><label>원산지</label><input type="text" id="editCountryOfOrigin" class="calc-input"></div>
+    </div>
+    <div class="calc-row three">
+      <div class="calc-field"><label>단위</label><input type="text" id="editUnit" class="calc-input"></div>
+      <div class="calc-field"><label>단위수량</label><input type="number" id="editUnitQuantity" class="calc-input"></div>
+      <div class="calc-field"><label>입수량/박스당수량</label><input type="number" id="editPackQuantity" class="calc-input"></div>
+    </div>
+
+    <div class="section-label">분류</div>
+    <div class="calc-row three">
+      <div class="calc-field"><label>1차 카테고리</label><select id="editCategory1" class="calc-input"><option value="">선택 안함</option></select></div>
+      <div class="calc-field"><label>2차 카테고리</label><select id="editCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
+      <div class="calc-field"><label>3차 카테고리</label><select id="editCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
+    </div>
+    <div class="calc-field"><label>브랜드</label><select id="editBrand" class="calc-input"><option value="">선택 안함</option></select></div>
+
+    <div class="section-label">가격</div>
+    <div class="calc-row">
+      <div class="calc-field"><label>소비자가(MSRP)</label><input type="number" id="editConsumerPrice" class="calc-input"></div>
+      <div class="calc-field"><label>오픈마켓 권장 판매가</label><input type="number" id="editRecommendedPrice" class="calc-input"></div>
+    </div>
+    <div class="calc-row three">
+      <div class="calc-field"><label>판매가1</label><input type="number" id="editSellerPrice1" class="calc-input"></div>
+      <div class="calc-field"><label>판매가2</label><input type="number" id="editSellerPrice2" class="calc-input"></div>
+      <div class="calc-field"><label>판매가3</label><input type="number" id="editSellerPrice3" class="calc-input"></div>
+    </div>
+
+    <div class="section-label">이미지</div>
+    <div class="image-fields-row">
+      <div class="main-image-block">
+        <label>대표이미지</label>
+        <input type="file" id="editMainImageFile" class="file-input" accept="image/jpeg,image/png,image/webp">
+        <div class="hint-text">현재 이미지가 아래 표시돼요. 새 파일을 선택하면 3개 크기가 다시 생성돼요.</div>
+        <div class="main-image-preview empty" id="editMainImagePreview"><img alt="" style="display:none;"></div>
+      </div>
+      <div class="detail-image-block">
+        <label>상세이미지 — 이 영역만 스크롤돼요</label>
+        <input type="file" id="editDetailImageFiles" class="file-input" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="hint-text">새로 선택하면 기존 상세이미지 전체를 대체해요. 선택 안 하면 기존 그대로 유지돼요.</div>
+        <div class="detail-image-scroll" id="editDetailImagePreview">
+          <div class="detail-image-scroll-empty">현재 등록된 상세이미지가 없어요</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="upload-progress-wrap" id="editProgressWrap" style="display:none;">
+      <div class="upload-progress-track"><div class="upload-progress-bar" id="editProgressBar"></div></div>
+      <div class="upload-progress-label" id="editProgressLabel">업로드 중... 0%</div>
+    </div>
+
+    <div class="section-label">상세설명 · 키워드</div>
+    <div class="calc-field"><label>상세설명</label><textarea id="editDescription" class="calc-input" rows="3"></textarea></div>
+    <div class="calc-field"><label>검색 키워드 (쉼표로 구분)</label><input type="text" id="editKeyword" class="calc-input"></div>
+
+    <div class="section-label">상태</div>
+    <div class="flag-row">
+      <label class="flag-toggle"><input type="checkbox" id="editNewRegisteredYn"><span>신규등록</span></label>
+      <label class="flag-toggle"><input type="checkbox" id="editNewProductYn"><span>신상품</span></label>
+      <label class="flag-toggle"><input type="checkbox" id="editStockOutYn"><span>품절</span></label>
+      <label class="flag-toggle"><input type="checkbox" id="editDiscontinuedYn"><span>단종</span></label>
+      <label class="flag-toggle"><input type="checkbox" id="editBundleYn"><span>번들상품</span></label>
+      <label class="flag-toggle"><input type="checkbox" id="editImportedYn"><span>수입상품</span></label>
+    </div>
+
+    <div class="section-label">옵션</div>
+    <div class="radio-row">
+      <label class="radio-toggle"><input type="radio" name="editHasOptionYn" value="Y"><span>있음</span></label>
+      <label class="radio-toggle"><input type="radio" name="editHasOptionYn" value="N" checked><span>없음</span></label>
+    </div>
+    <div class="option-fields" id="editOptionFields" style="display:none;">
+      <div class="option-rows" id="editOptionRows"></div>
+      <button type="button" class="btn" id="editAddOptionBtn">+ 옵션 추가</button>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" id="btnSaveEdit" class="btn gold">저장</button>
+    </div>
+  </div>
+</div>
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/products.js}"></script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 브랜드관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/brands.css}">
+</head>
+<!-- data-api-base: 브랜드 JSON API 기본 경로. data-category1-api: 1차 카테고리 목록(드롭다운용) -->
+<body th:attr="data-api-base=@{/admin/brands}, data-category1-api=@{/admin/categories/category1}">
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='brands')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='브랜드명, 제조사, 수입사로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">브랜드관리<span>브랜드명을 클릭하면 아래에서 수정할 수 있어요</span></div>
+      </div>
+
+      <!-- 목록 + 페이징 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">전체 브랜드<span class="n" id="brandCount">0건</span></div>
+          <div class="panel-action">
+            <button type="button" id="btnAddBrand" class="btn gold">+ 브랜드 등록</button>
+          </div>
+        </div>
+        <div class="table-fixed-height" style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>코드</th>
+                <th>브랜드명</th>
+                <th>제조사</th>
+                <th>수입사</th>
+                <th>취급상품</th>
+                <th>원산지</th>
+                <th>수입구분</th>
+                <th>카테고리</th>
+                <th>정렬</th>
+                <th>사용</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="brandTableBody">
+              <tr class="empty-row"><td colspan="11">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="brandPagination"></div>
+      </div>
+
+      <!-- 등록/수정 폼 -->
+      <div class="panel" id="brandFormPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title" id="brandFormTitle">브랜드 등록</div>
+          <div class="panel-action">
+            <button type="button" id="btnCloseForm" class="btn">닫기</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <form id="brandForm">
+            <input type="hidden" id="brandId">
+
+            <div class="calc-row">
+              <div class="calc-field">
+                <label>브랜드명(국문)<span class="req">*</span></label>
+                <input type="text" id="brandNameKr" class="calc-input" required>
+              </div>
+              <div class="calc-field">
+                <label>브랜드명(영문)</label>
+                <input type="text" id="brandNameEn" class="calc-input">
+              </div>
+            </div>
+
+            <div class="calc-row">
+              <div class="calc-field">
+                <label>제조사명<span class="req">*</span></label>
+                <input type="text" id="manufacturerName" class="calc-input" required>
+              </div>
+              <div class="calc-field">
+                <label>수입사명</label>
+                <input type="text" id="importerName" class="calc-input">
+              </div>
+            </div>
+
+            <div class="calc-field">
+              <label>취급상품 요약</label>
+              <textarea id="productSummary" class="calc-input" rows="2" maxlength="500"></textarea>
+            </div>
+
+            <div class="calc-row">
+              <div class="calc-field">
+                <label>원산지 / 제조국</label>
+                <input type="text" id="countryOfOrigin" class="calc-input" placeholder="예: 대한민국, 프랑스">
+              </div>
+              <div class="calc-field">
+                <label>수입구분</label>
+                <select id="importType" class="calc-input">
+                  <option value="">선택 안함</option>
+                  <option value="OFFICIAL">정식수입</option>
+                  <option value="PARALLEL">병행수입</option>
+                  <option value="DIRECT_MANUFACTURE">직접제조</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="calc-field">
+              <label>주로 취급하는 1차 카테고리</label>
+              <select id="brandCategory1" class="calc-input">
+                <option value="">선택 안함</option>
+              </select>
+            </div>
+
+            <!-- 정렬순서/사용여부는 등록 시에는 자동 배정되어 수정할 때만 노출됩니다 -->
+            <div class="calc-row" id="editOnlyFields" style="display:none;">
+              <div class="calc-field">
+                <label>정렬순서</label>
+                <input type="number" id="sortOrder" class="calc-input">
+              </div>
+              <div class="calc-field">
+                <label>사용여부</label>
+                <label class="use-yn-toggle">
+                  <input type="checkbox" id="useYn" checked>
+                  <span>사용함</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn gold" id="btnSaveBrand">저장</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/brands.js}"></script>
+</body>
+</html>

@@ -6,9 +6,13 @@
 <title>WDC-HUB — 셀러 상품 데이터 콘솔</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
 <link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css">
+<link rel="stylesheet" th:href="@{/css/vendor/effect-super-flow.min.css}">
+<link rel="stylesheet" th:href="@{/css/vendor/swiper-gl.min.css}">
 </head>
-<body>
+<body th:attr="data-products-api=@{/products/list}, data-member-grade=${memberGrade}">
 
 <div class="ticker">
   <div class="ticker-track" id="tickerTrack"></div>
@@ -24,11 +28,12 @@
           searchPlaceholder='상품명, 제조사, 공급사로 검색',
           showKbdHint=true,
           showCategoryBtn=true,
-          avatarText='셀',
+          avatarText=${avatarText},
           companyName=${companyName},
           showExport=true,
           showCalcBtn=true,
-          showBell=true)}"></div>
+          showBell=true,
+          searchNavUrl=@{/products})}"></div>
 
     <div class="content">
       <div class="page-head">
@@ -40,28 +45,28 @@
       <div class="stats">
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">전체 상품 수</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 11h18"/></svg></div></div>
-          <div class="stat-value">4,182</div>
-          <div class="stat-delta up">▲ 38건 · 어제 대비</div>
+          <div class="stat-value" th:text="${#numbers.formatInteger(totalProductCount, 1, 'COMMA')}">0</div>
+          <div class="stat-delta" th:text="'오늘 +' + ${todayNewCount} + '건 등록'">오늘 +0건 등록</div>
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">오늘 신규 등록</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></div></div>
-          <div class="stat-value">27</div>
-          <div class="stat-delta">번들 9 · 수입 8 · 일반 10</div>
+          <div class="stat-value" th:text="${todayNewCount}">0</div>
+          <div class="stat-delta" th:text="'번들 ' + ${todayBundleCount} + ' · 수입 ' + ${todayImportCount} + ' · 일반 ' + ${todayNormalCount}">번들 0 · 수입 0 · 일반 0</div>
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">신상품</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7-5.4-4.7 7.1-.7z"/></svg></div></div>
-          <div class="stat-value">86</div>
-          <div class="stat-delta up">▲ 12건 · 지난주 대비</div>
+          <div class="stat-value" th:text="${#numbers.formatInteger(newProductCount, 1, 'COMMA')}">0</div>
+          <div class="stat-delta">전체 상품 중 신상품 표시</div>
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">번들상품</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 11h18"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div></div>
-          <div class="stat-value">612</div>
-          <div class="stat-delta up">▲ 9건 · 어제 대비</div>
+          <div class="stat-value" th:text="${#numbers.formatInteger(bundleCount, 1, 'COMMA')}">0</div>
+          <div class="stat-delta" th:text="'오늘 +' + ${todayBundleCount} + '건 등록'">오늘 +0건 등록</div>
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-label">수입상품</span><div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h6l2-3h4l2 3h6"/><path d="M2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6"/><path d="M12 3v6"/></svg></div></div>
-          <div class="stat-value">958</div>
-          <div class="stat-delta up">▲ 8건 · 어제 대비</div>
+          <div class="stat-value" th:text="${#numbers.formatInteger(importedCount, 1, 'COMMA')}">0</div>
+          <div class="stat-delta" th:text="'오늘 +' + ${todayImportCount} + '건 등록'">오늘 +0건 등록</div>
         </div>
       </div>
 
@@ -69,8 +74,8 @@
       <div class="row-2">
         <div class="panel">
           <div class="panel-head">
-            <div class="panel-title">상품 데이터<span class="n">4,182건</span></div>
-            <div class="panel-action"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>필터</div>
+            <div class="panel-title">최근 등록 상품</div>
+            <a class="panel-action" th:href="@{/products}">전체 상품 보기<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </div>
           <div class="tabs" id="tabs">
             <div class="tab active" data-cat="all">전체</div>
@@ -132,8 +137,31 @@
         </div>
       </div>
 
-      <!-- row 3: calendar / rocket / market -->
-      <div class="row-3">
+      <!-- row 5: calendar / rocket / market / (빈 카드 2개, 추후 Swiper 슬라이드용) -->
+      <div class="row-5 mini-panels">
+        <!-- Super Flow 슬라이더 (UI Initiative 유료 Swiper 이펙트) -->
+        <div class="panel super-flow-panel">
+          <div class="panel-body super-flow-panel-body">
+            <div class="swiper super-flow-swiper" id="dashboardSuperFlow">
+              <div class="swiper-wrapper">
+                <div class="swiper-slide">
+                  <div class="super-flow-image"><img src="/images/assets/01.jpg" alt=""></div>
+                  <div class="super-flow-content">NEW ARRIVALS</div>
+                </div>
+                <div class="swiper-slide">
+                  <div class="super-flow-image"><img src="/images/assets/02.jpg" alt=""></div>
+                  <div class="super-flow-content">WEEKLY DEALS</div>
+                </div>
+                <div class="swiper-slide">
+                  <div class="super-flow-image"><img src="/images/assets/03.jpg" alt=""></div>
+                  <div class="super-flow-content">BRAND DAY</div>
+                </div>
+              </div>
+              <div class="swiper-pagination"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="panel">
           <div class="panel-body">
             <div class="cal-head">
@@ -171,6 +199,38 @@
             <div class="market-row"><span class="market-dot err"></span><span class="market-name">위메프</span><span class="market-sync">인증 오류</span></div>
           </div>
         </div>
+
+        <!-- Swiper GL 슬라이더 (UI Initiative, WebGL 셰이더 전환 효과) -->
+        <div class="panel swiper-gl-panel">
+          <div class="panel-body swiper-gl-panel-body">
+            <div class="swiper swiper-gl-dashboard" id="dashboardSwiperGL">
+              <div class="swiper-wrapper">
+                <div class="swiper-slide">
+                  <img class="swiper-gl-image" src="/images/assets2/01.jpg" alt="">
+                  <div class="swiper-slide-content"><div class="swiper-slide-title">TRENDING NOW</div></div>
+                </div>
+                <div class="swiper-slide">
+                  <img class="swiper-gl-image" src="/images/assets2/02.jpg" alt="">
+                  <div class="swiper-slide-content"><div class="swiper-slide-title">BEST SELLERS</div></div>
+                </div>
+                <div class="swiper-slide">
+                  <img class="swiper-gl-image" src="/images/assets2/03.jpg" alt="">
+                  <div class="swiper-slide-content"><div class="swiper-slide-title">NEW SEASON</div></div>
+                </div>
+                <div class="swiper-slide">
+                  <img class="swiper-gl-image" src="/images/assets2/04.jpg" alt="">
+                  <div class="swiper-slide-content"><div class="swiper-slide-title">TOP RATED</div></div>
+                </div>
+                <div class="swiper-slide">
+                  <img class="swiper-gl-image" src="/images/assets2/05.jpg" alt="">
+                  <div class="swiper-slide-content"><div class="swiper-slide-title">LIMITED STOCK</div></div>
+                </div>
+              </div>
+              <div class="swiper-button-prev"></div>
+              <div class="swiper-button-next"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- notice -->
@@ -190,7 +250,23 @@
   </div>
 </div>
 
+<!-- 상품 상세 Offcanvas (내용은 추후 채울 예정, 지금은 슬라이드 동작만) -->
+<div class="offcanvas offcanvas-end product-detail-offcanvas" tabindex="-1" id="productDetailOffcanvas" aria-labelledby="productDetailOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="productDetailOffcanvasLabel">상품 상세</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" id="productDetailOffcanvasBody"></div>
+</div>
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script th:src="@{/js/ticker.js}"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
+<script th:src="@{/js/vendor/effect-super-flow.min.js}"></script>
+<script th:src="@{/js/dashboard-super-flow.js}"></script>
+<script th:src="@{/js/vendor/swiper-gl.min.js}"></script>
+<script th:src="@{/js/dashboard-swiper-gl.js}"></script>
 <script th:src="@{/js/dashboard.js}"></script>
 </body>
 </html>

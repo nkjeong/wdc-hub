@@ -1,6 +1,7 @@
 package kr.co.wdchub.sellerdata.service;
 
 import kr.co.wdchub.sellerdata.domain.Member;
+import kr.co.wdchub.sellerdata.domain.MemberGrade;
 import kr.co.wdchub.sellerdata.domain.MemberRole;
 import kr.co.wdchub.sellerdata.domain.MemberStatus;
 import kr.co.wdchub.sellerdata.dto.SignupForm;
@@ -96,5 +97,13 @@ public class MemberService {
                 .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + id));
 
         member.setStatus(MemberStatus.REJECTED);
+    }
+
+    @Transactional
+    public void updateGrade(Long id, MemberGrade grade) {
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + id));
+
+        member.setGrade(grade);
     }
 }

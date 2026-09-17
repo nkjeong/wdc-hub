@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!--
+  Bootstrap CDN 공용 프래그먼트입니다.
+  Offcanvas 등 Bootstrap 컴포넌트가 필요한 페이지에서만 가져다 쓰세요.
+  버전을 올리거나 무결성 해시를 바꿀 일이 생기면, 이 파일 하나만 고치면
+  가져다 쓰는 모든 페이지에 한 번에 반영됩니다.
+
+  사용 예 (<head> 안, 다른 CSS 링크들 옆):
+  <th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
+
+  사용 예 (</body> 직전, 페이지 자체 스크립트보다 먼저):
+  <th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+-->
+
+<th:block th:fragment="bootstrapCss">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+</th:block>
+
+<th:block th:fragment="bootstrapJs">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</th:block>
+
+</body>
+</html>

@@ -100,6 +100,7 @@
     gap:14px; padding:0 22px; flex-shrink:0;
   }
   .search{
+    position:relative;
     flex:1; max-width:380px; display:flex; align-items:center; gap:8px;
     background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:8px 12px;
     color:var(--text-faint);
@@ -108,6 +109,20 @@
   .search input{ background:none; border:none; outline:none; color:var(--text); font-size:13px; width:100%; font-family:inherit;}
   .search input::placeholder{ color:var(--text-faint); }
   .search kbd{ font-family:var(--mono); font-size:10px; color:var(--text-faint); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+
+  /* ---- 검색창 한영 오타 변환 제안 ---- */
+  .search-suggest{
+    position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:60;
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:9px 12px; font-size:12px; color:var(--text-dim);
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+  }
+  .search-suggest-btn{
+    background:none; border:none; padding:0; margin:0; color:var(--gold); font-weight:700;
+    font-size:12px; font-family:inherit; cursor:pointer; text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .search-suggest-btn:hover{ color:#e6bc4a; }
 
   .topbar-right{ margin-left:auto; display:flex; align-items:center; gap:10px; }
   .btn{
@@ -126,8 +141,10 @@
   .icon-btn svg{ width:15px; height:15px; }
   .icon-btn .dot{ position:absolute; top:6px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--red); border:1.5px solid var(--bg-raise); }
   .avatar{
-    width:34px; height:34px; border-radius:7px; background:var(--surface-2); border:1px solid var(--line);
+    width:auto; min-width:34px; height:26px; padding:0 10px; border-radius:6px;
+    background:var(--surface-2); border:1px solid var(--line);
     display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:var(--gold);
+    white-space:nowrap;
   }
 
   .content{ padding:22px; display:flex; flex-direction:column; gap:18px; }
@@ -152,6 +169,80 @@
   /* grid layout */
   .row-2{ display:grid; grid-template-columns:1fr 320px; gap:14px; align-items:start; }
   .row-3{ display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+  .row-5{ display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+
+  /* Swiper 슬라이드로 옮기기 전, 지금은 같은 줄에 5개가 들어가도록 살짝 축소한 버전 */
+  .mini-panels .panel-head{ padding:9px 11px; }
+  .mini-panels .panel-title{ font-size:12px; }
+  .mini-panels .panel-body{ padding:11px; }
+  .mini-panels .cal-month{ font-size:11.5px; }
+  .mini-panels .cal-nav button{ width:18px; height:18px; }
+  .mini-panels .cal-nav svg{ width:9px; height:9px; }
+  .mini-panels .cal-dow{ font-size:8.5px; padding:2px 0 5px; }
+  .mini-panels .cal-cell{ font-size:9.5px; }
+  .mini-panels .cal-legend{ margin-top:9px; gap:5px; }
+  .mini-panels .cal-legend-item{ font-size:9.5px; gap:6px; }
+  .mini-panels .kv-list{ gap:9px; }
+  .mini-panels .kv-label{ font-size:10.5px; }
+  .mini-panels .kv-value{ font-size:11.5px; }
+  .mini-panels .market-row{ padding:6px 0; gap:8px; }
+  .mini-panels .market-name{ font-size:11px; }
+  .mini-panels .market-sync{ font-size:9.5px; }
+
+  /* 빈 카드 2개 (추후 Swiper 슬라이드 자리) */
+  .empty-slot-panel{ border-style:dashed; }
+  .empty-slot-body{
+    height:100%; min-height:120px; display:flex; align-items:center; justify-content:center;
+    color:var(--text-faint); font-size:11px;
+  }
+
+  /* Super Flow 슬라이더 카드 — 이미지가 카드 가장자리까지 꽉 차도록 패딩 제거 */
+  .super-flow-panel{ display:flex; flex-direction:column; padding:0; }
+  .super-flow-panel-body{ flex:1; padding:0; min-height:150px; }
+  .super-flow-swiper{ width:100%; height:100%; min-height:150px; }
+  .super-flow-swiper .swiper-wrapper{ height:100%; }
+  .super-flow-swiper .swiper-slide{ height:100%; }
+
+  /* 공식 데모(main.css)에 있던 콘텐츠 가운데 정렬 스타일 — 이게 빠져서 글자가 좌상단에 붙어있었습니다 */
+  .super-flow-swiper .super-flow-content{
+    padding:10px; font-weight:800; line-height:1.15; text-align:center;
+    display:flex; align-items:center; justify-content:center;
+    box-sizing:border-box; color:#fff; font-size:26px; letter-spacing:.03em;
+    text-shadow:0 2px 10px rgba(0,0,0,.55);
+    inset-inline-start:25%; width:50%;
+  }
+
+  /* 이미지가 박스를 완전히 채우도록 보강 (position/inset을 명시적으로 재지정) */
+  .super-flow-swiper{ border-radius:10px; overflow:hidden; }
+  .super-flow-swiper .super-flow-image{
+    position:absolute; inset:0; width:100%; height:100%; overflow:hidden;
+    clip-path:none !important; /* 플러그인이 기본으로 넣는 대각선 클리핑을 강제로 제거 */
+    border-radius:10px;
+  }
+  .super-flow-swiper .super-flow-image img{
+    position:absolute; inset:0; display:block; width:100%; height:100%; object-fit:cover;
+    clip-path:none !important;
+    border-radius:10px;
+  }
+
+  /* Swiper GL 슬라이더 카드 (오른쪽) — Super Flow 카드와 동일한 패턴으로 사이징 */
+  .swiper-gl-panel{ display:flex; flex-direction:column; padding:0; }
+  .swiper-gl-panel-body{ flex:1; padding:0; min-height:150px; }
+  .swiper-gl-dashboard{
+    width:100%; height:100%; min-height:150px; border-radius:10px;
+    --swiper-navigation-color:#fff; --swiper-navigation-size:16px;
+  }
+  .swiper-gl-dashboard .swiper-slide-content{
+    position:absolute; left:12px; bottom:10px; max-width:calc(100% - 24px); z-index:5;
+  }
+  .swiper-gl-dashboard .swiper-slide-title{
+    font-size:16px; font-weight:800; line-height:1.2; letter-spacing:.02em;
+    color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.55);
+  }
+  .swiper-gl-dashboard .swiper-button-prev,
+  .swiper-gl-dashboard .swiper-button-next{
+    width:26px; height:26px; background:rgba(0,0,0,.35); border-radius:50%;
+  }
 
   .panel{ background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
   .panel-head{ display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid var(--line-soft); }
@@ -283,6 +374,7 @@
   @media (max-width: 1180px){
     .row-2{ grid-template-columns:1fr; }
     .row-3{ grid-template-columns:1fr 1fr; }
+    .row-5{ grid-template-columns:1fr 1fr 1fr; }
     .footer-grid{ grid-template-columns:1fr 1fr; }
   }
   @media (max-width: 860px){
@@ -290,6 +382,7 @@
     .sidebar .brand-name, .sidebar .brand-sub, .nav-item span:not(.count), .nav-label, .plan-card{ display:none; }
     .stats{ grid-template-columns:1fr 1fr; }
     .row-3{ grid-template-columns:1fr; }
+    .row-5{ grid-template-columns:1fr 1fr; }
   }
 .category-all-btn .chev{ width:12px; height:12px; opacity:.6; margin-left:1px; }
 
@@ -321,3 +414,207 @@
 .user-dropdown-item svg{ width:14px; height:14px; flex-shrink:0; opacity:.85; }
 .user-dropdown-item:hover{ background:var(--surface-2); color:var(--text); }
 .user-dropdown-item.logout:hover{ color:var(--red); }
+
+/* ---- 카테고리 전체보기 메가메뉴 ---- */
+.category-menu-wrap{ position:relative; }
+
+.category-all-btn .chev{ transition:transform .15s ease; }
+.category-menu-wrap.open .category-all-btn .chev{ transform:rotate(180deg); }
+
+.cat-mega{
+  position:absolute; top:calc(100% + 10px); left:0; z-index:80;
+  display:flex; gap:22px;
+  width:max-content;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 18px 44px rgba(0,0,0,.4);
+  padding:18px;
+  opacity:0; visibility:hidden; pointer-events:none; transform:translateY(10px);
+  transition:opacity .18s ease, transform .18s ease, visibility .18s;
+}
+.category-menu-wrap.open .cat-mega{
+  opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0);
+}
+
+.cat-mega-loading, .cat-mega-empty{
+  color:var(--text-faint); font-size:12.5px; padding:20px; white-space:nowrap;
+}
+
+.cat-mega-col{ min-width:150px; flex-shrink:0; }
+.cat-mega-col-title{
+  font-size:12px; font-weight:700; color:var(--gold);
+  padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid var(--line-soft);
+  white-space:nowrap;
+}
+.cat-mega-list{ list-style:none; display:flex; flex-direction:column; gap:2px; }
+
+.cat-mega-item{
+  position:relative; padding:7px 9px; border-radius:6px;
+  font-size:12.5px; color:var(--text-dim); white-space:nowrap;
+}
+.cat-mega-item:hover{ background:var(--surface-2); color:var(--text); }
+.cat-mega-item-empty{ color:var(--text-faint); }
+.cat-mega-item-empty:hover{ background:none; color:var(--text-faint); }
+
+/* 3차 카테고리 flyout — 2차 항목의 오른쪽, 약간 아래에서 위로 fade-in */
+.cat-mega-flyout{
+  position:absolute; left:100%; top:0; margin-left:6px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+  padding:8px; min-width:150px; white-space:nowrap;
+  opacity:0; visibility:hidden; transform:translateY(8px);
+  transition:opacity .16s ease, transform .16s ease, visibility .16s;
+  z-index:90;
+}
+.cat-mega-item:hover .cat-mega-flyout{
+  opacity:1; visibility:visible; transform:translateY(0);
+}
+
+/* 가장 오른쪽 컬럼(화면 끝에 가까움)은 3차가 오른쪽이 아니라 왼쪽으로 열립니다 */
+.cat-mega-col:last-child .cat-mega-flyout{
+  left:auto; right:100%; margin-left:0; margin-right:6px;
+}
+
+.cat-mega-flyout-list{ list-style:none; display:flex; flex-direction:column; gap:1px; }
+.cat-mega-flyout-list li{
+  padding:6px 8px; border-radius:5px; font-size:12px; color:var(--text-dim);
+}
+.cat-mega-flyout-list li:hover{ background:var(--surface); color:var(--text); }
+
+@media (max-width: 860px){
+  .cat-mega{ left:-40px; }
+}
+
+/* ---- 전역: 클릭 가능한 요소는 항상 포인터 커서로 ----
+   button 태그는 브라우저 기본값이 cursor:pointer가 아니라서(특히 Chrome/Firefox),
+   개별 컴포넌트 CSS에서 깜빡 빠뜨려도 여기서 한 번에 잡아줍니다.
+   모든 페이지가 dashboard.css를 공통으로 불러오기 때문에 전체 사이트에 적용돼요. */
+button:not(:disabled),
+.tab,
+.page-btn:not(:disabled),
+[role="button"]{
+  cursor:pointer;
+}
+button:disabled{ cursor:default; }
+
+/* ---- 상품 상세 Offcanvas — 다크 테마, 모든 페이지 공통 (관리자 "상품 수정" Offcanvas는 제외) ---- */
+.offcanvas{
+  background:var(--surface); color:var(--text); border-left:1px solid var(--line);
+}
+.offcanvas-header{ border-bottom:1px solid var(--line-soft); padding:18px 20px; align-items:flex-start; }
+.offcanvas-title{ font-size:15px; font-weight:700; }
+.offcanvas-body{ padding:20px; }
+.offcanvas.product-detail-offcanvas{ width:550px !important; max-width:95vw; }
+
+/* 상품 상세 Offcanvas 내부 레이아웃 — 이 안만 전용 (관리자 "상품 수정" Offcanvas는 별개) */
+#productDetailOffcanvasBody{
+  padding:0; display:flex; flex-direction:column; height:100%; overflow:hidden;
+}
+
+/* 상단: 왼쪽 40% 대표이미지 + 오른쪽 60% 상품정보 */
+.product-detail-top{
+  display:flex; align-items:flex-start; flex-shrink:0;
+  max-height:60%; overflow-y:auto;
+}
+.product-detail-top::-webkit-scrollbar{ display:none; }
+.product-detail-top{ scrollbar-width:none; -ms-overflow-style:none; }
+
+.pd-image{
+  width:40%; flex-shrink:0; aspect-ratio:1/1; background:var(--surface-2);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+}
+.pd-image img{ width:100%; height:100%; object-fit:cover; display:block; }
+.pd-image-empty{ font-size:11px; color:var(--text-faint); }
+
+.pd-info{ width:60%; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.pd-status-row{ display:flex; flex-wrap:wrap; gap:4px; }
+.pd-name{ font-size:15px; font-weight:700; line-height:1.35; margin:0; }
+
+.pd-price-rows{ display:flex; flex-direction:column; gap:6px; padding:10px 0; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+.pd-price-row{ display:flex; align-items:center; justify-content:space-between; font-size:12.5px; }
+.pd-price-row .pd-value{ font-family:var(--mono); font-weight:700; }
+.pd-price-row .pd-value.gold{ color:var(--gold); font-size:14px; }
+
+.pd-section-title{ font-size:11px; font-weight:700; color:var(--gold); letter-spacing:.02em; }
+.pd-options-list{ list-style:none; display:flex; flex-direction:column; gap:4px; }
+.pd-options-list li{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  background:var(--surface-2); border-radius:6px; padding:6px 9px; font-size:12px;
+}
+.pd-opt-name{ color:var(--text-faint); margin-right:4px; }
+.pd-opt-stock{ font-family:var(--mono); font-size:10.5px; color:var(--text-dim); flex-shrink:0; }
+.pd-options-empty{ font-size:11.5px; color:var(--text-faint); }
+
+.pd-meta-rows{ display:flex; flex-direction:column; gap:7px; }
+.pd-meta-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; font-size:12px; }
+.pd-meta-row .pd-label{ color:var(--text-faint); flex-shrink:0; }
+.pd-meta-row .pd-value{ text-align:right; word-break:break-all; }
+
+.pd-download-btn{
+  display:flex; align-items:center; justify-content:center; gap:7px;
+  padding:9px; border-radius:7px; border:1px solid var(--green); background:rgba(52,201,126,.08);
+  color:var(--green); font-size:12.5px; font-weight:700; margin-top:4px;
+}
+.pd-download-btn:hover{ background:var(--green); color:#0c1f16; }
+
+/* 하단: 키워드 (가로 100%, 세로 30px 고정) */
+.product-detail-keywords{
+  flex-shrink:0; width:100%; height:30px; padding:0 20px; display:flex; align-items:center; gap:8px;
+  border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); background:var(--surface-2);
+  font-size:11px; overflow:hidden; white-space:nowrap;
+}
+.pd-keyword-label{ color:var(--gold); font-weight:700; flex-shrink:0; }
+.pd-keyword-value{ color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* 그 아래: 상세이미지 — Offcanvas 폭에 맞춰 축소, 넘치면 이 영역만 스크롤(스크롤바는 숨김) */
+.product-detail-images{
+  flex:1; min-height:0; overflow-y:auto; padding:12px 20px 20px;
+  display:flex; flex-direction:column; gap:4px;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.product-detail-images::-webkit-scrollbar{ display:none; }
+.product-detail-images img{ width:100%; height:auto; display:block; border-radius:4px; }
+.pd-detail-images-empty{ text-align:center; color:var(--text-faint); font-size:12px; padding:24px 0; }
+
+/* 대시보드 "최근 등록 상품" 목록 — 행 클릭 시 상세 Offcanvas가 열림을 알려주는 hover 효과 */
+#tbody tr{ cursor:pointer; transition:background .1s ease; }
+#tbody tr:hover{ background:var(--surface-2); }
+
+/* ---- 엑셀 다운로드 버튼 + 진행률 바 (상품 목록류 페이지 공통) ---- */
+.panel-action-group{ margin-left:auto; display:flex; align-items:center; gap:14px; }
+.panel-action-text{ font-size:12px; color:var(--text-faint); }
+
+.excel-btn{
+  display:flex; align-items:center; gap:6px; padding:7px 13px; border-radius:7px;
+  border:1px solid var(--line); background:var(--surface-2); color:var(--green);
+  font-size:12px; font-weight:600;
+}
+.excel-btn:hover:not(:disabled){ border-color:var(--green); background:rgba(52,201,126,.1); }
+.excel-btn:disabled{ opacity:.55; }
+
+/* 엑셀 버튼 위, 위아래로 천천히 둥실거리는 안내 말풍선
+   부모 패널(.panel)의 overflow:hidden에 안 잘리도록 position:fixed로 띄우고 JS가 좌표를 계산합니다 */
+.excel-btn-wrap{ position:relative; display:inline-flex; }
+.excel-tooltip{
+  position:fixed; z-index:50; transform:translate(-50%, -100%);
+  visibility:hidden; /* JS가 정확한 위치를 계산하기 전까진 숨겨서 "점프"가 안 보이게 함 */
+  background:var(--gold); color:#1A1400; font-size:11px; font-weight:700;
+  padding:6px 11px; border-radius:7px; white-space:nowrap; pointer-events:none;
+  animation:excelTooltipBob 2.2s ease-in-out infinite;
+}
+.excel-tooltip::after{
+  content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+  border:5px solid transparent; border-top-color:var(--gold);
+}
+@keyframes excelTooltipBob{
+  0%, 100%{ transform:translate(-50%, -100%); }
+  50%{ transform:translate(-50%, calc(-100% - 7px)); }
+}
+
+.download-progress-row{
+  display:flex; align-items:center; gap:10px;
+  padding:0 16px 14px; border-bottom:1px solid var(--line-soft);
+}
+.download-progress-percent{ font-family:var(--mono); font-size:12px; color:var(--gold); font-weight:700; flex-shrink:0; min-width:34px; }
+.download-progress-track{
+  width:80%; height:7px; border-radius:5px; background:var(--bg-raise); border:1px solid var(--line); overflow:hidden;
+}
+.download-progress-bar{ height:100%; width:0%; background:var(--gold); border-radius:5px; transition:width .12s ease; }

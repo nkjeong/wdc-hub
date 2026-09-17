@@ -1,0 +1,49 @@
+/* products-by-category 페이지 전용 — dashboard.css + products-list.css + products-by-brand.css 위에 얹어서 씁니다 */
+
+.cat-dropdown-row{ display:flex; gap:14px; flex-wrap:wrap; }
+
+/* select 태그 대신 div/section으로 직접 만든 드롭다운 */
+.cat-dropdown{ position:relative; flex:1; min-width:200px; }
+
+.cat-dropdown-trigger{
+  width:100%; display:flex; align-items:center; gap:10px;
+  background:var(--bg-raise); border:1px solid var(--line); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-family:inherit; text-align:left;
+}
+.cat-dropdown-trigger:hover:not(:disabled){ border-color:#3A4150; }
+.cat-dropdown-trigger:disabled{ opacity:.5; cursor:default; }
+
+.cat-dropdown-label{ font-size:10.5px; color:var(--text-faint); flex-shrink:0; }
+.cat-dropdown-value{
+  flex:1; font-size:12.8px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cat-dropdown-chev{ width:14px; height:14px; flex-shrink:0; color:var(--text-faint); transition:transform .15s ease; }
+.cat-dropdown.open .cat-dropdown-chev{ transform:rotate(180deg); }
+
+.cat-dropdown-menu{
+  position:fixed; z-index:300;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px;
+  box-shadow:0 14px 32px rgba(0,0,0,.4);
+  max-height:280px; overflow-y:auto; padding:6px;
+  opacity:0; visibility:hidden; transform:translateY(6px); pointer-events:none;
+  transition:opacity .14s ease, transform .14s ease, visibility .14s;
+}
+.cat-dropdown.open .cat-dropdown-menu{
+  opacity:1; visibility:visible; transform:translateY(0); pointer-events:auto;
+}
+
+.cat-dropdown-item{
+  display:block; width:100%; text-align:left; padding:8px 10px; border-radius:6px;
+  font-size:12.8px; color:var(--text-dim); background:none; border:none; font-family:inherit;
+}
+.cat-dropdown-item:hover{ background:var(--surface-2); color:var(--text); }
+.cat-dropdown-item.selected{ color:var(--gold); font-weight:700; }
+.cat-dropdown-item.all-option{ color:var(--text-faint); border-bottom:1px solid var(--line-soft); margin-bottom:4px; padding-bottom:9px; }
+
+.cat-dropdown-count{ font-family:var(--mono); font-size:11px; color:var(--text-faint); }
+.cat-dropdown-item.selected .cat-dropdown-count{ color:var(--gold); opacity:.8; }
+
+/* 카테고리 패널 제목 옆 선택 경로 표시 */
+.cat-path-label.active{ color:var(--gold); font-weight:700; }
+
+.cat-dropdown-empty{ padding:10px; font-size:12px; color:var(--text-faint); }

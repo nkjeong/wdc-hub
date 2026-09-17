@@ -46,6 +46,24 @@ public class CategoryService {
         return category3Repository.findAllByCategory2_IdOrderBySortOrderAsc(category2Id);
     }
 
+    /**
+     * 카테고리 전체보기 메가메뉴용 — 활성화(useYn=true)된 카테고리만 1~3차 중첩 트리로 조립
+     * 로그인한 모든 회원(셀러+관리자)이 조회할 수 있습니다 (CategoryMenuController에서 사용).
+     */
+    public List<Category1MenuResponse> getCategoryMenuTree() {
+        return category1Repository.findAllByUseYnTrueOrderBySortOrderAsc().stream()
+                .map(c1 -> new Category1MenuResponse(
+                        c1.getId(), c1.getCategoryCode(), c1.getCategoryName(),
+                        category2Repository.findAllByCategory1_IdAndUseYnTrueOrderBySortOrderAsc(c1.getId()).stream()
+                                .map(c2 -> new Category2MenuResponse(
+                                        c2.getId(), c2.getCategoryCode(), c2.getCategoryName(),
+                                        category3Repository.findAllByCategory2_IdAndUseYnTrueOrderBySortOrderAsc(c2.getId()).stream()
+                                                .map(c3 -> new Category3MenuResponse(c3.getId(), c3.getCategoryCode(), c3.getCategoryName()))
+                                                .toList()))
+                                .toList()))
+                .toList();
+    }
+
     // ── 등록 ──────────────────────────────────────
 
     @Transactional

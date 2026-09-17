@@ -151,3 +151,20 @@ if (fileInput && fileNameEl && fileHintEl) {
     fileHintEl.className = 'hint ok';
   });
 }
+
+// ================================================================
+// 5) 폼 제출 시 사업자등록증 첨부 필수 검증
+//    (지금까지는 파일이 없어도 그냥 넘어갔는데, 이제 반드시 첨부해야 제출됩니다)
+// ================================================================
+const signupFormEl = document.getElementById('signupForm');
+
+if (signupFormEl && fileInput && fileHintEl) {
+  signupFormEl.addEventListener('submit', (e) => {
+    if (!fileInput.files || fileInput.files.length === 0) {
+      e.preventDefault();
+      fileHintEl.textContent = '사업자등록증 파일을 첨부해주세요.';
+      fileHintEl.className = 'hint err';
+      fileInput.closest('.field').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+}

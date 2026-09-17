@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 전체 상품</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/products-list.css}">
+</head>
+<body th:attr="data-products-api=@{/products/list}, data-member-grade=${memberGrade}">
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=true,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">전체 상품<span>카테고리·브랜드·가격 등 모든 정보를 한 줄로 확인하세요</span></div>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-cat="all">전체</div>
+        <div class="tab" data-cat="bundle">번들상품</div>
+        <div class="tab" data-cat="import">수입상품</div>
+        <div class="tab" data-cat="normal">일반상품</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">상품 목록<span class="n" id="resultCount">0건</span></div>
+          <div class="panel-action-group">
+            <span class="panel-action-text" id="searchInfo"></span>
+            <div class="excel-btn-wrap">
+              <div class="excel-tooltip">데이터를 다운로드 할 수 있어요</div>
+              <button type="button" class="excel-btn" id="excelDownloadBtn" title="엑셀로 다운로드">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
+                엑셀 다운로드
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="download-progress-row" id="downloadProgressRow" style="display:none;">
+          <span class="download-progress-percent" id="downloadProgressPercent">0%</span>
+          <div class="download-progress-track"><div class="download-progress-bar" id="downloadProgressBar" style="width:0%;"></div></div>
+        </div>
+        <div class="table-scroll">
+          <table class="nowrap-table">
+            <thead>
+              <tr>
+                <th>이미지</th>
+                <th>바코드</th>
+                <th>품번</th>
+                <th>상품명</th>
+                <th>카테고리</th>
+                <th>브랜드</th>
+                <th>옵션</th>
+                <th>원산지</th>
+                <th>단위/수량</th>
+                <th>소비자가</th>
+                <th>권장판매가</th>
+                <th>공급가</th>
+                <th>마진율</th>
+                <th>상태</th>
+                <th>등록일</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr class="empty-row"><td colspan="15">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 옵션 상세 레이어 — "있음" 클릭 시 아래에서 위로 fade-in 되며 나타납니다 -->
+<div class="option-flyout" id="optionFlyout"></div>
+
+<!-- 상품 상세 Offcanvas (내용은 추후 채울 예정, 지금은 슬라이드 동작만) -->
+<div class="offcanvas offcanvas-end product-detail-offcanvas" tabindex="-1" id="productDetailOffcanvas" aria-labelledby="productDetailOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="productDetailOffcanvasLabel">상품 상세</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" id="productDetailOffcanvasBody"></div>
+</div>
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/products-list.js}"></script>
+</body>
+</html>

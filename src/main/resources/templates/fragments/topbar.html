@@ -5,6 +5,7 @@
 <!--
   공용 상단바 프래그먼트입니다.
   페이지마다 검색창 문구, 아바타 글자, 보여줄 버튼이 달라서 파라미터로 받습니다.
+  searchNavUrl: 검색창에서 Enter를 눌렀을 때 이동할 주소 (예: @{/products}). 필요 없는 페이지는 null로 넘기세요.
 
   사용 예 (대시보드):
   <div th:replace="~{fragments/topbar :: topbar(
@@ -15,9 +16,10 @@
         companyName=${companyName},
         showExport=true,
         showCalcBtn=true,
-        showBell=true)}"></div>
+        showBell=true,
+        searchNavUrl=@{/products})}"></div>
 
-  사용 예 (회원관리, 버튼 없이 검색창+아바타만):
+  사용 예 (회원관리, 버튼 없이 검색창+아바타만, 검색 이동 없음):
   <div th:replace="~{fragments/topbar :: topbar(
         searchPlaceholder='아이디, 회사명, 이메일로 검색',
         showKbdHint=false,
@@ -26,19 +28,24 @@
         companyName=${companyName},
         showExport=false,
         showCalcBtn=false,
-        showBell=false)}"></div>
+        showBell=false,
+        searchNavUrl=null)}"></div>
 -->
-<div class="topbar" th:fragment="topbar(searchPlaceholder, showKbdHint, showCategoryBtn, avatarText, companyName, showExport, showCalcBtn, showBell)">
-  <div class="search">
+<div class="topbar" th:fragment="topbar(searchPlaceholder, showKbdHint, showCategoryBtn, avatarText, companyName, showExport, showCalcBtn, showBell, searchNavUrl)">
+  <div class="search" th:attr="data-search-nav=${searchNavUrl}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-    <input type="text" th:placeholder="${searchPlaceholder}">
+    <input type="text" id="topbarSearchInput" th:placeholder="${searchPlaceholder}">
     <kbd th:if="${showKbdHint}">⌘K</kbd>
+    <div class="search-suggest" id="searchSuggest" style="display:none;"></div>
   </div>
-  <button th:if="${showCategoryBtn}" class="btn category-all-btn">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-    카테고리 전체보기
-    <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-  </button>
+  <div th:if="${showCategoryBtn}" class="category-menu-wrap" th:attr="data-menu-api=@{/categories/menu}">
+    <button type="button" class="btn category-all-btn" id="categoryAllBtn" aria-haspopup="true" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      카테고리 전체보기
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <div class="cat-mega" id="categoryMegaPanel"></div>
+  </div>
   <div class="topbar-right">
     <button th:if="${showExport}" class="btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>엑셀로 내보내기
@@ -71,6 +78,11 @@
       </div>
     </div>
   </div>
+
+  <!-- 카테고리 전체보기 메가메뉴 스크립트 — topbar를 쓰는 모든 페이지에 자동 포함됩니다 -->
+  <script th:src="@{/js/category-menu.js}"></script>
+  <!-- 검색창 한영 오타 변환 제안 스크립트 — topbar를 쓰는 모든 페이지에 자동 포함됩니다 -->
+  <script th:src="@{/js/topbar-search.js}"></script>
 </div>
 
 </body>

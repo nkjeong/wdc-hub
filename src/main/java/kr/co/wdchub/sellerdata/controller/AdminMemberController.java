@@ -1,5 +1,6 @@
 package kr.co.wdchub.sellerdata.controller;
 
+import kr.co.wdchub.sellerdata.domain.MemberGrade;
 import kr.co.wdchub.sellerdata.security.CustomUserDetails;
 import kr.co.wdchub.sellerdata.service.MemberService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/admin/members")
@@ -37,6 +39,12 @@ public class AdminMemberController {
     @PostMapping("/{id}/reject")
     public String reject(@PathVariable Long id) {
         memberService.reject(id);
+        return "redirect:/admin/members";
+    }
+
+    @PostMapping("/{id}/grade")
+    public String updateGrade(@PathVariable Long id, @RequestParam MemberGrade grade) {
+        memberService.updateGrade(id, grade);
         return "redirect:/admin/members";
     }
 }

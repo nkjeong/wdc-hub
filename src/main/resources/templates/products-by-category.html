@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 카테고리별 상품</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/products-list.css}">
+<link rel="stylesheet" th:href="@{/css/products-by-brand.css}">
+<link rel="stylesheet" th:href="@{/css/products-by-category.css}">
+</head>
+<body th:attr="data-products-api=@{/products/list}, data-category-menu-api=@{/categories/menu}, data-member-grade=${memberGrade}">
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=true,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">카테고리별 상품<span>1차 → 2차 → 3차 순서로 선택하면 그때마다 아래 목록이 바로 갱신돼요</span></div>
+      </div>
+
+      <!-- 브랜드마다 랜덤 상품 1개씩, 최대 10개 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">이런 상품은 어떠세요?<span class="n" id="featuredCount">0개</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="featured-grid" id="featuredGrid">
+            <div class="brand-chip-empty">불러오는 중...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카테고리 3단 드롭다운 (select 태그가 아니라 div/section으로 직접 구현) -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">카테고리<span class="n cat-path-label" id="categoryPathLabel">선택 안 됨</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="cat-dropdown-row">
+
+            <section class="cat-dropdown" id="cat1Dropdown">
+              <button type="button" class="cat-dropdown-trigger" id="cat1Trigger">
+                <span class="cat-dropdown-label">1차 카테고리</span>
+                <span class="cat-dropdown-value" id="cat1Value">전체</span>
+                <svg class="cat-dropdown-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="cat-dropdown-menu" id="cat1Menu"></div>
+            </section>
+
+            <section class="cat-dropdown" id="cat2Dropdown">
+              <button type="button" class="cat-dropdown-trigger" id="cat2Trigger" disabled>
+                <span class="cat-dropdown-label">2차 카테고리</span>
+                <span class="cat-dropdown-value" id="cat2Value">1차 먼저 선택</span>
+                <svg class="cat-dropdown-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="cat-dropdown-menu" id="cat2Menu"></div>
+            </section>
+
+            <section class="cat-dropdown" id="cat3Dropdown">
+              <button type="button" class="cat-dropdown-trigger" id="cat3Trigger" disabled>
+                <span class="cat-dropdown-label">3차 카테고리</span>
+                <span class="cat-dropdown-value" id="cat3Value">2차 먼저 선택</span>
+                <svg class="cat-dropdown-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="cat-dropdown-menu" id="cat3Menu"></div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- 선택한 카테고리의 상품 목록 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title" id="productListTitle">상품 목록<span class="n" id="resultCount">0건</span></div>
+          <div class="panel-action-group">
+            <div class="excel-btn-wrap">
+              <div class="excel-tooltip">데이터를 다운로드 할 수 있어요</div>
+              <button type="button" class="excel-btn" id="excelDownloadBtn" title="엑셀로 다운로드">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
+                엑셀 다운로드
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="download-progress-row" id="downloadProgressRow" style="display:none;">
+          <span class="download-progress-percent" id="downloadProgressPercent">0%</span>
+          <div class="download-progress-track"><div class="download-progress-bar" id="downloadProgressBar" style="width:0%;"></div></div>
+        </div>
+        <div class="table-scroll">
+          <table class="nowrap-table">
+            <thead>
+              <tr>
+                <th>이미지</th>
+                <th>바코드</th>
+                <th>품번</th>
+                <th>상품명</th>
+                <th>카테고리</th>
+                <th>브랜드</th>
+                <th>옵션</th>
+                <th>원산지</th>
+                <th>단위/수량</th>
+                <th>소비자가</th>
+                <th>권장판매가</th>
+                <th>공급가</th>
+                <th>마진율</th>
+                <th>상태</th>
+                <th>등록일</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr class="empty-row"><td colspan="15">카테고리를 선택하면 상품 목록이 나타나요.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 옵션 상세 레이어 — "있음" 클릭 시 아래에서 위로 fade-in 되며 나타납니다 -->
+<div class="option-flyout" id="optionFlyout"></div>
+
+<!-- 상품 상세 Offcanvas (내용은 추후 채울 예정, 지금은 슬라이드 동작만) -->
+<div class="offcanvas offcanvas-end product-detail-offcanvas" tabindex="-1" id="productDetailOffcanvas" aria-labelledby="productDetailOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="productDetailOffcanvasLabel">상품 상세</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body" id="productDetailOffcanvasBody"></div>
+</div>
+
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/products-by-category.js}"></script>
+</body>
+</html>

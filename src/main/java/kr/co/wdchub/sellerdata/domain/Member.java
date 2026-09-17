@@ -63,6 +63,12 @@ public class Member {
     @Builder.Default
     private MemberStatus status = MemberStatus.PENDING;
 
+    // 회원 등급 — 관리자가 회원관리 화면에서 직접 설정/변경
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private MemberGrade grade = MemberGrade.NORMAL;
+
     // ---- 회사(사업자) 정보 ----
     @Column(nullable = false, length = 100)
     private String companyName;

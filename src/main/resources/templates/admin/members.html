@@ -6,8 +6,7 @@
 <title>WDC-HUB — 회원관리</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapCss}"></th:block>
 <link rel="stylesheet" th:href="@{/css/dashboard.css}">
 <link rel="stylesheet" th:href="@{/css/members.css}">
 </head>
@@ -26,11 +25,12 @@
           searchPlaceholder='아이디, 회사명, 이메일로 검색',
           showKbdHint=false,
           showCategoryBtn=false,
-          avatarText='관',
+          avatarText=${avatarText},
           companyName=${companyName},
           showExport=false,
           showCalcBtn=false,
-          showBell=false)}"></div>
+          showBell=false,
+          searchNavUrl=null)}"></div>
 
     <div class="content">
       <div class="page-head">
@@ -49,6 +49,7 @@
               <th>회사명</th>
               <th>사업자등록번호</th>
               <th>연락처</th>
+              <th>등급</th>
               <th>상태</th>
               <th>신청일</th>
               <th>처리</th>
@@ -56,7 +57,7 @@
           </thead>
           <tbody>
             <tr th:if="${#lists.isEmpty(members)}" class="empty-row">
-              <td colspan="7">아직 접수된 가입 신청이 없어요.</td>
+              <td colspan="8">아직 접수된 가입 신청이 없어요.</td>
             </tr>
 
             <tr th:each="m : ${members}">
@@ -74,6 +75,13 @@
               <td>
                 <div th:text="${m.email}">email</div>
                 <div class="member-sub" th:text="${m.phoneNumber}">010-0000-0000</div>
+              </td>
+              <td>
+                <span th:switch="${m.grade.name()}">
+                  <span th:case="'NORMAL'" class="grade-pill normal">일반</span>
+                  <span th:case="'VIP'" class="grade-pill vip">VIP</span>
+                  <span th:case="'GOLD'" class="grade-pill gold">GOLD</span>
+                </span>
               </td>
               <td>
                 <span th:switch="${m.status.name()}">
@@ -132,6 +140,16 @@
           <div class="detail-row"><span class="k">신청일</span><span class="v" th:text="${#temporals.format(m.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01</span></div>
           <div class="detail-row" th:if="${m.approvedAt != null}"><span class="k">승인일</span><span class="v" th:text="${#temporals.format(m.approvedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01</span></div>
 
+          <div class="detail-section-title">등급 관리</div>
+          <form th:action="@{/admin/members/{id}/grade(id=${m.id})}" method="post" class="grade-form">
+            <select name="grade" class="grade-select">
+              <option value="NORMAL" th:selected="${m.grade.name() == 'NORMAL'}">일반회원</option>
+              <option value="VIP" th:selected="${m.grade.name() == 'VIP'}">VIP회원</option>
+              <option value="GOLD" th:selected="${m.grade.name() == 'GOLD'}">GOLD회원</option>
+            </select>
+            <button type="submit" class="btn-approve">변경</button>
+          </form>
+
           <div class="detail-section-title">사업자 정보</div>
           <div class="detail-row"><span class="k">상호명</span><span class="v" th:text="${m.companyName}">회사명</span></div>
           <div class="detail-row"><span class="k">대표자명</span><span class="v" th:text="${m.ceoName}">대표자</span></div>
@@ -168,8 +186,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+<th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
 <script th:src="@{/js/ticker.js}"></script>
 <script th:src="@{/js/members.js}"></script>
 </body>
