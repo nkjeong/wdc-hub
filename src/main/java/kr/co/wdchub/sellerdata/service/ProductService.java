@@ -146,6 +146,9 @@ public class ProductService {
     // ── 내부 헬퍼 ──────────────────────────────────
 
     private void applyRequest(Product product, ProductRequest req) {
+        if (req.barcode() == null || req.barcode().isBlank()) {
+            throw new IllegalArgumentException("바코드는 필수 항목입니다.");
+        }
         product.setBarcode(req.barcode());
         product.setProductNumber(req.productNumber());
         product.setProductName(req.productName());

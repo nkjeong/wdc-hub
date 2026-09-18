@@ -169,6 +169,8 @@ function resetForm() {
   document.getElementById('brandId').value = '';
   category1Select.value = '';
   document.getElementById('useYn').checked = true;
+  document.getElementById('brandNameDupWarning').textContent = '';
+  brandNameConfirmedValue = null;
 }
 
 function openCreateForm() {
@@ -213,6 +215,13 @@ document.getElementById('btnCloseForm').addEventListener('click', closeForm);
 brandForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
+  const brandNameTyped = document.getElementById('brandNameKr').value.trim();
+  if (brandNameConfirmedValue !== brandNameTyped) {
+    alert('브랜드명 옆의 "사용" 버튼을 눌러 이름을 확정한 뒤 등록/수정해주세요.');
+    document.getElementById('brandNameUseBtn').focus();
+    return;
+  }
+
   const basePayload = {
     brandNameKr: document.getElementById('brandNameKr').value.trim(),
     brandNameEn: document.getElementById('brandNameEn').value.trim() || null,
@@ -248,6 +257,55 @@ brandForm.addEventListener('submit', async (e) => {
   } catch (err) {
     alert(err.message);
   }
+});
+
+// ── 브랜드명 실시간 중복 유사도 확인 + "사용" 확정 ──────────────
+// 키를 눌렀다 뗄 때마다(keyup) 검사합니다. 3글자 이상 서로 겹치면(포함 관계면) 경고를 보여줍니다.
+// "사용" 버튼을 눌러 확정한 이름으로만 등록/수정할 수 있고, 이름을 다시 고치면 확정이 풀립니다.
+// 수정 모드에서는 지금 수정 중인 브랜드 자기 자신은 비교 대상에서 빼줍니다.
+
+let brandNameConfirmedValue = null; // "사용" 버튼으로 마지막으로 확정된 이름 값 (null = 아직 확정 안 됨/무효화됨)
+
+function checkBrandNameSimilarity() {
+  const warningEl = document.getElementById('brandNameDupWarning');
+  const typed = document.getElementById('brandNameKr').value.trim();
+
+  if (typed.length < 3) {
+    warningEl.className = 'match-result';
+    warningEl.textContent = '';
+    return;
+  }
+
+  const isSimilar = allBrands.some((b) => {
+    if (!b.brandNameKr) return false;
+    if (editingId && b.id === editingId) return false; // 수정 중인 자기 자신은 제외
+    return b.brandNameKr.includes(typed) || typed.includes(b.brandNameKr);
+  });
+
+  warningEl.className = isSimilar ? 'match-result none' : 'match-result';
+  warningEl.textContent = isSimilar ? '이미 등록된 업체인지 확인하세요.' : '';
+}
+
+document.getElementById('brandNameKr').addEventListener('keyup', () => {
+  brandNameConfirmedValue = null; // 값이 바뀌면 이전 확정은 무효화
+  checkBrandNameSimilarity();
+});
+
+document.getElementById('brandNameUseBtn').addEventListener('click', () => {
+  const nameInput = document.getElementById('brandNameKr');
+  const warningEl = document.getElementById('brandNameDupWarning');
+  const typed = nameInput.value.trim();
+
+  if (!typed) {
+    warningEl.className = 'match-result none';
+    warningEl.textContent = '브랜드명을 먼저 입력해주세요.';
+    nameInput.focus();
+    return;
+  }
+
+  brandNameConfirmedValue = typed;
+  warningEl.className = 'match-result ok';
+  warningEl.textContent = `"${typed}"(으)로 사용하도록 확정했어요.`;
 });
 
 // ── 초기 로드 ──────────────────────────────

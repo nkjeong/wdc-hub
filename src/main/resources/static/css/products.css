@@ -27,6 +27,24 @@ textarea.calc-input{ resize:vertical; font-family:var(--sans); }
 .match-result.partial{ color:var(--amber); }
 .match-result.none{ color:var(--text-faint); }
 
+/* ---- 엑셀 대량등록 결과 모달 ---- */
+.bulk-result-summary{ display:flex; gap:18px; margin-bottom:16px; font-size:13px; }
+.bulk-result-summary b{ font-family:var(--mono); font-size:16px; margin-right:5px; }
+.bulk-result-summary .ok b{ color:var(--green); }
+.bulk-result-summary .fail b{ color:var(--red); }
+.bulk-result-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+.bulk-result-table th{ text-align:left; padding:8px 10px; color:var(--text-faint); font-weight:600; border-bottom:1px solid var(--line-soft); white-space:nowrap; }
+.bulk-result-table td{ padding:8px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+.bulk-result-row-ok td:nth-child(3){ color:var(--green); }
+.bulk-result-row-fail td:nth-child(3){ color:var(--red); }
+.bulk-result-row-fail{ background:rgba(240,97,91,.06); }
+
+.btn-match.is-loading{ opacity:.6; pointer-events:none; }
+.bulk-progress-label{ font-size:12px; color:var(--text-dim); font-family:var(--mono); text-align:center; padding:8px 0 4px; }
+
+/* 창이 좁아져도 상품명 등이 줄바꿈되지 않고, 테이블이 넓어지며 가로 스크롤됩니다 */
+.admin-product-table th, .admin-product-table td{ white-space:nowrap; }
+
 /* ---- 파일 업로드 입력 ---- */
 .file-input{
   width:100%; background:var(--bg-raise); border:1px solid var(--line); border-radius:7px;
@@ -144,10 +162,11 @@ td:has(.status-pill){ line-height:1.9; }
 .status-pill.discontinued::before{ background:var(--red); }
 
 .row-actions{ display:flex; gap:6px; }
-.btn-edit-row, .btn-del-row{
+.btn-copy-row, .btn-edit-row, .btn-del-row{
   font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:6px; border:1px solid var(--line);
   background:var(--surface-2); color:var(--text-dim);
 }
+.btn-copy-row:hover{ border-color:var(--blue); color:var(--blue); }
 .btn-edit-row:hover{ border-color:var(--gold); color:var(--gold); }
 .btn-del-row:hover{ background:var(--red); color:#fff; border-color:var(--red); }
 

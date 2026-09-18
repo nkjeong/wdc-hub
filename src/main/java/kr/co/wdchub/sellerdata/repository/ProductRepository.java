@@ -31,6 +31,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     long countByNewProductYnTrue();
 
+    /** 바코드 중복 등록 확인용 — 등록 화면의 "등록확인" 버튼에서 사용합니다 */
+    boolean existsByBarcode(String barcode);
+
     /** 신상품 카운트 — 플래그가 켜져 있고, 등록일이 기준 시각 이후인 것만 (배지 30일 만료와 동일한 조건) */
     long countByNewProductYnTrueAndCreatedAtAfter(LocalDateTime since);
 

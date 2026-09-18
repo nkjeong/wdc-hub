@@ -42,6 +42,9 @@ public class DashboardController {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime todayEnd = todayStart.plusDays(1);
 
+        // 달력 등 화면에서 "오늘"의 기준일로 쓰기 위한 값입니다. 클라이언트 PC 시계가 아니라 서버 시계 기준입니다.
+        model.addAttribute("serverToday", LocalDate.now().toString()); // 예: 2026-09-18
+
         long todayNewCount = productRepository.countByCreatedAtBetween(todayStart, todayEnd);
         long todayBundleCount = productRepository.countByBundleYnTrueAndCreatedAtBetween(todayStart, todayEnd);
         long todayImportCount = productRepository.countByImportedYnTrueAndCreatedAtBetween(todayStart, todayEnd);

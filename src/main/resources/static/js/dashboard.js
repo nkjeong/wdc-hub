@@ -294,25 +294,89 @@
 
   loadProducts();
 
-  // ---- calendar (실제 오늘 날짜 기준) ----
+  // ---- calendar ----
+  // "오늘"은 클라이언트 PC 시계가 아니라 서버가 내려준 날짜(data-server-today) 기준입니다.
   (function(){
-    const now = new Date();
-    const year = now.getFullYear(), month = now.getMonth();
-    const today = now.getDate();
+    const serverTodayStr = document.body.dataset.serverToday; // "2026-09-18" 형식
+    const serverToday = serverTodayStr ? new Date(serverTodayStr + 'T00:00:00') : new Date();
+
+    const todayYear = serverToday.getFullYear();
+    const todayMonth = serverToday.getMonth();
+    const todayDate = serverToday.getDate();
+
+    let viewYear = todayYear;
+    let viewMonth = todayMonth;
+    let animating = false;
+
     const events = { 15:'blue', 25:'blue' };
-    const first = new Date(year, month, 1);
-    const startDow = first.getDay();
-    const daysInMonth = new Date(year, month+1, 0).getDate();
     const grid = document.getElementById('calGrid');
-    document.getElementById('calMonth').textContent = `${year}. ${String(month+1).padStart(2,'0')}`;
-    let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-dow">${d}</div>`).join('');
-    for(let i=0;i<startDow;i++) html += `<div class="cal-cell faint">${'' }</div>`;
-    for(let d=1; d<=daysInMonth; d++){
-      const isToday = d === today;
-      const ev = events[d] ? `<span class="ev" style="background:var(--blue)"></span>` : '';
-      html += `<div class="cal-cell ${isToday ? 'today' : ''}">${d}${ev}</div>`;
+    const monthLabel = document.getElementById('calMonth');
+
+    function buildGridHTML(year, month) {
+      const first = new Date(year, month, 1);
+      const startDow = first.getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      let html = ['일','월','화','수','목','금','토'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+      for (let i = 0; i < startDow; i++) html += `<div class="cal-cell faint"></div>`;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = year === todayYear && month === todayMonth && d === todayDate;
+        const ev = events[d] ? `<span class="ev" style="background:var(--blue)"></span>` : '';
+        html += `<div class="cal-cell ${isToday ? 'today' : ''}">${d}${ev}</div>`;
+      }
+      return html;
     }
-    grid.innerHTML = html;
+
+    function renderCalendar() {
+      monthLabel.textContent = `${viewYear}. ${String(viewMonth + 1).padStart(2, '0')}`;
+      grid.innerHTML = buildGridHTML(viewYear, viewMonth);
+    }
+
+    function goToMonth(delta) {
+      animate(delta, () => {
+        viewMonth += delta;
+        if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
+        else if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
+      });
+    }
+
+    function goToYear(delta) {
+      animate(delta, () => { viewYear += delta; }); // 월은 그대로 두고 연도만 이동
+    }
+
+    /** delta의 부호로 슬라이드 방향을 정하고, updateFn으로 viewYear/viewMonth를 바꾼 뒤 같은 전환 애니메이션을 재사용합니다 */
+    function animate(delta, updateFn) {
+      if (animating) return; // 애니메이션 도중 연타 방지
+      animating = true;
+
+      const dir = delta > 0 ? 1 : -1;
+      grid.style.setProperty('--cal-out-x', (-dir * 16) + 'px');
+      grid.classList.add('cal-anim-out'); // 1) 지금 보이는 달을 fade-out + slide-out
+
+      setTimeout(() => {
+        updateFn();
+        renderCalendar(); // 2) 새 내용으로 교체
+
+        grid.classList.remove('cal-anim-out');
+        grid.style.setProperty('--cal-in-x', (dir * 16) + 'px');
+        grid.classList.add('cal-anim-in'); // 3) 반대편에 안 보이는 상태로 배치(트랜지션 없이 순간 이동)
+
+        // 다음 프레임에 'in' 상태를 해제해서, 트랜지션이 살아있는 채로 제자리로 fade-in + slide-in 되게 함
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            grid.classList.remove('cal-anim-in');
+            animating = false;
+          });
+        });
+      }, 220); // CSS 트랜지션 시간과 맞춤
+    }
+
+    document.getElementById('calPrevBtn').addEventListener('click', () => goToMonth(-1));
+    document.getElementById('calNextBtn').addEventListener('click', () => goToMonth(1));
+    document.getElementById('calYearPrevBtn').addEventListener('click', () => goToYear(-1));
+    document.getElementById('calYearNextBtn').addEventListener('click', () => goToYear(1));
+
+    renderCalendar();
   })();
 
   // ---- calculator ----

@@ -12,7 +12,7 @@
 <link rel="stylesheet" th:href="@{/css/vendor/effect-super-flow.min.css}">
 <link rel="stylesheet" th:href="@{/css/vendor/swiper-gl.min.css}">
 </head>
-<body th:attr="data-products-api=@{/products/list}, data-member-grade=${memberGrade}">
+<body th:attr="data-products-api=@{/products/list}, data-member-grade=${memberGrade}, data-server-today=${serverToday}">
 
 <div class="ticker">
   <div class="ticker-track" id="tickerTrack"></div>
@@ -92,8 +92,8 @@
             <div class="tab" data-cat="import">수입상품</div>
             <div class="tab" data-cat="normal">일반상품</div>
           </div>
-          <div style="overflow-x:auto;">
-          <table>
+          <div class="table-scroll">
+          <table class="dash-recent-table">
             <thead>
               <tr>
                 <th>상품명</th><th>구분</th><th>제조사</th><th>소비자가</th><th>공급가</th><th>마진율</th><th>재고상태</th><th>등록일</th>
@@ -175,7 +175,12 @@
           <div class="panel-body">
             <div class="cal-head">
               <div class="cal-month" id="calMonth">2026. 09</div>
-              <div class="cal-nav"><button>‹</button><button>›</button></div>
+              <div class="cal-nav">
+                <button type="button" id="calYearPrevBtn" title="1년 전">«</button>
+                <button type="button" id="calPrevBtn" title="한 달 전">‹</button>
+                <button type="button" id="calNextBtn" title="한 달 후">›</button>
+                <button type="button" id="calYearNextBtn" title="1년 후">»</button>
+              </div>
             </div>
             <div class="cal-grid" id="calGrid"></div>
             <div class="cal-legend">

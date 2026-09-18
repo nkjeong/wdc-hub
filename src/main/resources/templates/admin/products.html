@@ -47,9 +47,20 @@
       <div class="panel tab-panel" id="productListPanel">
         <div class="panel-head">
           <div class="panel-title">전체 상품<span class="n" id="productCount">0건</span></div>
+          <div class="panel-action-group">
+            <button type="button" class="btn-match" id="bulkTemplateBtn" title="엑셀 대량등록 양식을 내려받습니다">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              엑셀 양식 다운로드
+            </button>
+            <button type="button" class="btn-match" id="bulkUploadBtn" title="엑셀 파일로 상품을 한 번에 등록합니다">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+              엑셀 대량등록
+            </button>
+            <input type="file" id="bulkUploadFileInput" accept=".xlsx,.xls" style="display:none;">
+          </div>
         </div>
-        <div style="overflow-x:auto;">
-          <table>
+        <div class="table-scroll">
+          <table class="admin-product-table">
             <thead>
               <tr>
                 <th>이미지</th>
@@ -79,7 +90,17 @@
 
             <div class="section-label">기본정보</div>
             <div class="calc-row">
-              <div class="calc-field"><label>바코드</label><input type="text" id="regBarcode" class="calc-input"></div>
+              <div class="calc-field">
+                <label>바코드<span class="req">*</span></label>
+                <div class="field-with-match-btn">
+                  <input type="text" id="regBarcode" class="calc-input" required>
+                  <button type="button" class="btn-match" id="regBarcodeCheckBtn" title="이 바코드로 이미 등록된 상품이 있는지 확인합니다">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>
+                    등록확인
+                  </button>
+                </div>
+                <div class="match-result" id="regBarcodeCheckResult"></div>
+              </div>
               <div class="calc-field"><label>품번(모델명)</label><input type="text" id="regProductNumber" class="calc-input"></div>
             </div>
             <div class="calc-field">
@@ -95,43 +116,43 @@
             </div>
             <div class="calc-row">
               <div class="calc-field"><label>규격</label><input type="text" id="regSpec" class="calc-input"></div>
-              <div class="calc-field"><label>원산지</label><input type="text" id="regCountryOfOrigin" class="calc-input"></div>
+              <div class="calc-field"><label>원산지<span class="req">*</span></label><input type="text" id="regCountryOfOrigin" class="calc-input" required></div>
             </div>
             <div class="calc-row three">
-              <div class="calc-field"><label>단위</label><input type="text" id="regUnit" class="calc-input" placeholder="예: EA, BOX"></div>
-              <div class="calc-field"><label>단위수량</label><input type="number" id="regUnitQuantity" class="calc-input"></div>
-              <div class="calc-field"><label>입수량/박스당수량</label><input type="number" id="regPackQuantity" class="calc-input"></div>
+              <div class="calc-field"><label>단위<span class="req">*</span></label><input type="text" id="regUnit" class="calc-input" placeholder="예: EA, BOX" required></div>
+              <div class="calc-field"><label>단위수량<span class="req">*</span></label><input type="number" id="regUnitQuantity" class="calc-input" required></div>
+              <div class="calc-field"><label>입수량/박스당수량<span class="req">*</span></label><input type="number" id="regPackQuantity" class="calc-input" required></div>
             </div>
 
             <div class="section-label">분류</div>
             <div class="calc-row three">
-              <div class="calc-field"><label>1차 카테고리</label><select id="regCategory1" class="calc-input"><option value="">선택 안함</option></select></div>
+              <div class="calc-field"><label>1차 카테고리<span class="req">*</span></label><select id="regCategory1" class="calc-input" required><option value="">선택 안함</option></select></div>
               <div class="calc-field"><label>2차 카테고리</label><select id="regCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
               <div class="calc-field"><label>3차 카테고리</label><select id="regCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
             </div>
-            <div class="calc-field"><label>브랜드</label><select id="regBrand" class="calc-input"><option value="">선택 안함</option></select></div>
+            <div class="calc-field"><label>브랜드<span class="req">*</span></label><select id="regBrand" class="calc-input" required><option value="">선택 안함</option></select></div>
 
             <div class="section-label">가격</div>
             <div class="calc-row">
-              <div class="calc-field"><label>소비자가(MSRP)</label><input type="number" id="regConsumerPrice" class="calc-input"></div>
-              <div class="calc-field"><label>오픈마켓 권장 판매가</label><input type="number" id="regRecommendedPrice" class="calc-input"></div>
+              <div class="calc-field"><label>소비자가(MSRP)<span class="req">*</span></label><input type="number" id="regConsumerPrice" class="calc-input" required></div>
+              <div class="calc-field"><label>오픈마켓 권장 판매가<span class="req">*</span></label><input type="number" id="regRecommendedPrice" class="calc-input" required></div>
             </div>
             <div class="calc-row three">
-              <div class="calc-field"><label>판매가1 (셀러 공급가)</label><input type="number" id="regSellerPrice1" class="calc-input"></div>
-              <div class="calc-field"><label>판매가2</label><input type="number" id="regSellerPrice2" class="calc-input"></div>
-              <div class="calc-field"><label>판매가3</label><input type="number" id="regSellerPrice3" class="calc-input"></div>
+              <div class="calc-field"><label>판매가1 (셀러 공급가)<span class="req">*</span></label><input type="number" id="regSellerPrice1" class="calc-input" required></div>
+              <div class="calc-field"><label>판매가2<span class="req">*</span></label><input type="number" id="regSellerPrice2" class="calc-input" required></div>
+              <div class="calc-field"><label>판매가3<span class="req">*</span></label><input type="number" id="regSellerPrice3" class="calc-input" required></div>
             </div>
 
             <div class="section-label">이미지</div>
             <div class="image-fields-row">
               <div class="main-image-block">
-                <label>대표이미지 (원본 1장 — 자동으로 3개 크기 생성)</label>
-                <input type="file" id="regMainImageFile" class="file-input" accept="image/jpeg,image/png,image/webp">
+                <label>대표이미지 (원본 1장 — 자동으로 3개 크기 생성)<span class="req">*</span></label>
+                <input type="file" id="regMainImageFile" class="file-input" accept="image/jpeg,image/png,image/webp" required>
                 <div class="main-image-preview empty" id="regMainImagePreview"><img alt="" style="display:none;"></div>
               </div>
               <div class="detail-image-block">
-                <label>상세이미지 (여러 장 선택 가능, 원본 그대로 저장) — 이 영역만 스크롤돼요</label>
-                <input type="file" id="regDetailImageFiles" class="file-input" accept="image/jpeg,image/png,image/webp" multiple>
+                <label>상세이미지 (여러 장 선택 가능, 원본 그대로 저장) — 이 영역만 스크롤돼요<span class="req">*</span></label>
+                <input type="file" id="regDetailImageFiles" class="file-input" accept="image/jpeg,image/png,image/webp" multiple required>
                 <div class="detail-image-scroll" id="regDetailImagePreview">
                   <div class="detail-image-scroll-empty">선택한 이미지가 여기에 미리보기로 표시돼요</div>
                 </div>
@@ -191,7 +212,7 @@
 
     <div class="section-label">기본정보</div>
     <div class="calc-row">
-      <div class="calc-field"><label>바코드</label><input type="text" id="editBarcode" class="calc-input"></div>
+      <div class="calc-field"><label>바코드<span class="req">*</span></label><input type="text" id="editBarcode" class="calc-input" required></div>
       <div class="calc-field"><label>품번(모델명)</label><input type="text" id="editProductNumber" class="calc-input"></div>
     </div>
     <div class="calc-field">
@@ -287,7 +308,43 @@
   </div>
 </div>
 
+<!-- 엑셀 대량등록 결과 모달 -->
+<div class="modal fade" id="bulkResultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">엑셀 대량등록 결과</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- 처리 중 상태 -->
+        <div id="bulkProgressWrap" style="display:none;">
+          <div class="download-progress-row" style="border-bottom:none; padding:0 0 6px;">
+            <span class="download-progress-percent" id="bulkProgressPercent">0%</span>
+            <div class="download-progress-track"><div class="download-progress-bar" id="bulkProgressBar" style="width:0%;"></div></div>
+          </div>
+          <div class="bulk-progress-label" id="bulkProgressLabel">0 / 0건 처리 중...</div>
+        </div>
+
+        <!-- 완료 후 결과 -->
+        <div id="bulkResultDone" style="display:none;">
+          <div id="bulkResultSummary" class="bulk-result-summary"></div>
+          <div class="table-scroll">
+            <table class="bulk-result-table">
+              <thead>
+                <tr><th>행</th><th>상품명</th><th>결과</th><th>메시지</th></tr>
+              </thead>
+              <tbody id="bulkResultTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script th:src="@{/js/ticker.js}"></script>
 <script th:src="@{/js/products.js}"></script>
 </body>

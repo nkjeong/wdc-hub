@@ -398,15 +398,32 @@ function categoryLabel(p) {
   return parts.length ? escapeHtml(parts.join(' > ')) : '<span class="muted">-</span>';
 }
 
+let searchQuery = ''; // 상단바 검색창에서 입력한 검색어 (상품명/바코드/품번 대상)
+
+function getFilteredProducts() {
+  if (!searchQuery) return allProducts;
+  const q = searchQuery.toLowerCase();
+  return allProducts.filter((p) =>
+    (p.productName && p.productName.toLowerCase().includes(q)) ||
+    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+    (p.productNumber && p.productNumber.toLowerCase().includes(q))
+  );
+}
+
 function renderTable() {
-  productCountEl.textContent = allProducts.length + '건';
+  const rows = getFilteredProducts();
+  productCountEl.textContent = rows.length + '건';
 
   if (allProducts.length === 0) {
     tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">등록된 상품이 없어요. "상품 등록" 탭에서 추가해보세요.</td></tr>';
     return;
   }
+  if (rows.length === 0) {
+    tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">검색 결과가 없어요.</td></tr>';
+    return;
+  }
 
-  tableBody.innerHTML = allProducts.map((p) => `
+  tableBody.innerHTML = rows.map((p) => `
     <tr>
       <td>${p.mainImageThumbUrl
         ? `<img class="product-thumb" src="${escapeHtml(toWebUrl(p.mainImageThumbUrl))}" alt="">`
@@ -422,6 +439,7 @@ function renderTable() {
       <td class="muted">${escapeHtml(p.createdAt || '-')}</td>
       <td>
         <div class="row-actions">
+          <button type="button" class="btn-copy-row" data-id="${p.id}">복사</button>
           <button type="button" class="btn-edit-row" data-id="${p.id}">수정</button>
           <button type="button" class="btn-del-row" data-id="${p.id}">삭제</button>
         </div>
@@ -431,16 +449,58 @@ function renderTable() {
 }
 
 tableBody.addEventListener('click', (e) => {
+  const copyBtn = e.target.closest('.btn-copy-row');
   const editBtn = e.target.closest('.btn-edit-row');
   const delBtn = e.target.closest('.btn-del-row');
 
-  if (editBtn) {
+  if (copyBtn) {
+    const product = allProducts.find((p) => p.id === Number(copyBtn.dataset.id));
+    if (product) copyToRegisterForm(product);
+  } else if (editBtn) {
     const product = allProducts.find((p) => p.id === Number(editBtn.dataset.id));
     if (product) openEditOffcanvas(product);
   } else if (delBtn) {
     handleDelete(Number(delBtn.dataset.id));
   }
 });
+
+/** "복사" 버튼 — 기존 상품의 내용을 상품 등록 폼에 그대로 채워서, 비슷한 상품을 빠르게 새로 등록할 수 있게 합니다. */
+async function copyToRegisterForm(p) {
+  switchTab('register');
+  resetRegisterForm(); // 먼저 폼을 비우고 시작 (이미지 미리보기, 바코드 확인 상태 등도 초기화됨)
+
+  // 바코드는 복사하지 않아요 — 새 바코드를 직접 입력하고 "등록확인"을 눌러야 등록할 수 있어요.
+  setVal('regProductNumber', p.productNumber);
+  setVal('regProductName', p.productName);
+  setVal('regSpec', p.spec);
+  setVal('regCountryOfOrigin', p.countryOfOrigin);
+  setVal('regUnit', p.unit);
+  setVal('regUnitQuantity', p.unitQuantity);
+  setVal('regPackQuantity', p.packQuantity);
+  setVal('regConsumerPrice', p.consumerPrice);
+  setVal('regRecommendedPrice', p.recommendedPrice);
+  setVal('regSellerPrice1', p.sellerPrice1);
+  setVal('regSellerPrice2', p.sellerPrice2);
+  setVal('regSellerPrice3', p.sellerPrice3);
+  setVal('regDescription', p.description);
+  setVal('regKeyword', p.keyword);
+  document.getElementById('regStockOutYn').checked = !!p.stockOutYn;
+  document.getElementById('regDiscontinuedYn').checked = !!p.discontinuedYn;
+  document.getElementById('regBundleYn').checked = !!p.bundleYn;
+  document.getElementById('regImportedYn').checked = !!p.importedYn;
+  document.getElementById('regNewRegisteredYn').checked = !!p.newRegisteredYn;
+  document.getElementById('regNewProductYn').checked = !!p.newProductYn;
+  document.getElementById('regBrand').value = p.brandId ?? '';
+  fillOptionUI('reg', p);
+
+  await setCategorySelection('reg', p.category1Id, p.category2Id, p.category3Id);
+
+  // 바코드는 원본과 완전히 같은 값으로 복사돼서 그대로 두면 중복이에요.
+  // 등록확인을 다시 눌러야 하는 상태(미확인)로 남겨둬서, 등록 전에 반드시 새 바코드로 바꾸도록 유도합니다.
+  invalidateRegBarcodeCheck();
+
+  alert(`"${p.productName}"의 내용을 복사했어요.\n\n이미지는 브라우저 보안 정책상 자동으로 옮길 수 없어서 다시 선택해주셔야 하고,\n바코드는 복사되지 않으니 새로 입력하고 "등록확인"을 눌러주셔야 등록할 수 있어요.`);
+}
 
 async function handleDelete(id) {
   if (!confirm('이 상품을 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return;
@@ -451,6 +511,53 @@ async function handleDelete(id) {
     alert(e.message);
   }
 }
+
+// ── 바코드 등록확인 (신규 등록 화면 전용) ──────────────
+// "등록확인"을 눌러서 이미 등록된 바코드가 아님을 확인해야만 등록할 수 있게 합니다.
+// 바코드를 다시 고치면 확인 상태가 풀려서, 그 값 그대로 다시 확인해야 합니다.
+
+let regBarcodeCheckedValue = null; // 마지막으로 "등록 가능"이 확인된 바코드 값 (null = 아직 확인 안 됨/무효화됨)
+
+function invalidateRegBarcodeCheck() {
+  regBarcodeCheckedValue = null;
+  document.getElementById('regBarcodeCheckResult').className = 'match-result';
+  document.getElementById('regBarcodeCheckResult').textContent = '';
+}
+
+document.getElementById('regBarcode').addEventListener('input', invalidateRegBarcodeCheck);
+
+document.getElementById('regBarcodeCheckBtn').addEventListener('click', async () => {
+  const barcodeInput = document.getElementById('regBarcode');
+  const resultEl = document.getElementById('regBarcodeCheckResult');
+  const barcode = barcodeInput.value.trim();
+
+  if (!barcode) {
+    resultEl.className = 'match-result none';
+    resultEl.textContent = '바코드를 먼저 입력해주세요.';
+    barcodeInput.focus();
+    return;
+  }
+
+  resultEl.className = 'match-result';
+  resultEl.textContent = '확인 중...';
+
+  try {
+    const result = await fetchJSON(`${API_BASE}/check-barcode?barcode=${encodeURIComponent(barcode)}`);
+    if (result.exists) {
+      regBarcodeCheckedValue = null;
+      resultEl.className = 'match-result none';
+      resultEl.textContent = '이미 등록된 바코드예요. 다른 바코드를 확인해주세요.';
+    } else {
+      regBarcodeCheckedValue = barcode;
+      resultEl.className = 'match-result ok';
+      resultEl.textContent = '등록 가능한 바코드예요.';
+    }
+  } catch (e) {
+    regBarcodeCheckedValue = null;
+    resultEl.className = 'match-result none';
+    resultEl.textContent = '확인 중 오류가 발생했어요. 다시 시도해주세요.';
+  }
+});
 
 // ── 상품 등록 ──────────────────────────────
 
@@ -465,11 +572,26 @@ function resetRegisterForm() {
 
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  const barcode = document.getElementById('regBarcode').value.trim();
+  if (!barcode) {
+    alert('바코드는 필수 항목입니다. 입력 후 "등록확인" 버튼을 눌러주세요.');
+    document.getElementById('regBarcode').focus();
+    return;
+  }
+  if (regBarcodeCheckedValue !== barcode) {
+    alert('먼저 "등록확인" 버튼으로 이미 등록된 바코드가 아닌지 확인해주세요.');
+    document.getElementById('regBarcodeCheckBtn').focus();
+    return;
+  }
+
   try {
-    await submitProductForm('reg', 'POST', API_BASE);
+    const created = await submitProductForm('reg', 'POST', API_BASE);
     resetRegisterForm();
+    invalidateRegBarcodeCheck();
     switchTab('list');
     await loadProducts();
+    alert(`"${created.productName}" 상품이 등록되었습니다.`);
   } catch (err) {
     hideProgress('reg');
     alert(err.message);
@@ -633,7 +755,7 @@ async function runMatch(prefix) {
   }
 }
 
-document.querySelectorAll('.btn-match').forEach((btn) => {
+document.querySelectorAll('.btn-match[data-match-prefix]').forEach((btn) => {
   btn.addEventListener('click', () => runMatch(btn.dataset.matchPrefix));
 });
 
@@ -674,10 +796,271 @@ setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice1');
 setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice2');
 setupSellerPriceShortcut('editConsumerPrice', 'editSellerPrice3');
 
+// ── 엑셀 대량등록 ──────────────────────────────
+// 옵션 포함 상품을 엑셀 파일로 한 번에 등록합니다. 이미지는 엑셀에 담기 어려워서 이 기능으로는 다루지 않고,
+// 등록 후 각 상품을 수정 화면에서 따로 올리면 됩니다.
+//
+// 엑셀 컬럼 순서(왼쪽부터): 바코드, 품번, 상품명, 규격, 소비자가, 권장판매가, 단위, 단위수량, 입수량,
+// 1차카테고리, 2차카테고리, 3차카테고리, 브랜드, 원산지, 판매가1, 판매가2, 판매가3, 키워드, 상세설명,
+// 품절여부(Y/N), 단종여부(Y/N), 번들여부(Y/N), 수입여부(Y/N), 신규등록여부(Y/N), 신상품여부(Y/N), 옵션
+//
+// 옵션 형식: "옵션명:옵션값:추가금액:재고수량"을 한 옵션으로 보고, 옵션이 여러 개면 | 로 이어붙입니다.
+// 예) 색상:빨강:0:10|색상:파랑:0:5
+
+const BULK_TEMPLATE_HEADERS = [
+  '바코드', '품번', '상품명', '규격', '소비자가', '권장판매가', '단위', '단위수량', '입수량',
+  '1차카테고리', '2차카테고리', '3차카테고리', '브랜드', '원산지',
+  '판매가1', '판매가2', '판매가3', '키워드', '상세설명',
+  '품절여부(Y/N)', '단종여부(Y/N)', '번들여부(Y/N)', '수입여부(Y/N)', '신규등록여부(Y/N)', '신상품여부(Y/N)',
+  '옵션 (옵션명:옵션값:추가금액:재고수량, 여러개는 | 로 구분)',
+];
+
+function downloadBulkTemplate() {
+  const example = [
+    '1234567890123', 'SAMPLE-001', '예시 상품명 (실제 상품명으로 바꿔주세요)', '1개입', 11000, 11000, '개', 1, 1,
+    '번들상품', '필기구세트', '', '제브라', '한국',
+    5000, 5000, 5000, '예시,키워드', '상세설명 예시입니다',
+    'N', 'N', 'N', 'N', 'Y', 'Y',
+    '색상:빨강:0:10|색상:파랑:0:5',
+  ];
+  const worksheet = XLSX.utils.aoa_to_sheet([BULK_TEMPLATE_HEADERS, example]);
+  worksheet['!cols'] = BULK_TEMPLATE_HEADERS.map(() => ({ wch: 16 }));
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, '상품업로드양식');
+  XLSX.writeFile(workbook, '상품_대량등록_양식.xlsx');
+}
+
+function parseYn(v) {
+  if (v == null) return false;
+  const s = String(v).trim().toUpperCase();
+  return s === 'Y' || s === 'YES' || s === 'TRUE' || s === '1';
+}
+
+function parseNumberCell(v) {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isNaN(n) ? null : n;
+}
+
+function parseTextCell(v) {
+  const s = (v == null ? '' : String(v)).trim();
+  return s === '' ? null : s;
+}
+
+function parseOptionsCell(v) {
+  if (!v) return [];
+  return String(v).split('|').map((chunk) => chunk.trim()).filter(Boolean).map((chunk) => {
+    const parts = chunk.split(':').map((s) => (s ?? '').trim());
+    return {
+      optionName: parts[0] || '',
+      optionValue: parts[1] || '',
+      additionalPrice: parts[2] ? Number(parts[2]) : 0,
+      stockQuantity: parts[3] ? Number(parts[3]) : null,
+      optionBarcode: null,
+      soldOutYn: false,
+    };
+  }).filter((o) => o.optionName && o.optionValue);
+}
+
+/** 엑셀 행(배열)들을 ProductRequest 배열로 바꿉니다. 카테고리/브랜드는 이름으로 적혀있어서 실제 등록된 것과 이름을 대조해서 id로 바꿉니다. */
+async function buildBulkRequests(rows) {
+  const [categoryTree, brands] = await Promise.all([getCategoryMenuTree(), fetchJSON(BRAND_API)]);
+
+  const requests = [];
+  const rowErrors = [];
+
+  rows.forEach((row, idx) => {
+    const excelRowNumber = idx + 2; // 1행은 헤더
+    const productName = parseTextCell(row[2]);
+    if (!productName) {
+      rowErrors.push({ rowIndex: excelRowNumber, productName: '(상품명 없음)', success: false, message: '상품명이 비어있어서 건너뛰었어요.' });
+      return;
+    }
+
+    const cat1Name = parseTextCell(row[9]);
+    const cat2Name = parseTextCell(row[10]);
+    const cat3Name = parseTextCell(row[11]);
+    const brandName = parseTextCell(row[12]);
+
+    let category1Id = null, category2Id = null, category3Id = null;
+    if (cat1Name) {
+      const c1 = categoryTree.find((c) => c.categoryName === cat1Name);
+      if (!c1) { rowErrors.push({ rowIndex: excelRowNumber, productName, success: false, message: `1차카테고리 "${cat1Name}"를 찾을 수 없어요.` }); return; }
+      category1Id = c1.id;
+
+      if (cat2Name) {
+        const c2 = (c1.children || []).find((c) => c.categoryName === cat2Name);
+        if (!c2) { rowErrors.push({ rowIndex: excelRowNumber, productName, success: false, message: `2차카테고리 "${cat2Name}"를 찾을 수 없어요.` }); return; }
+        category2Id = c2.id;
+
+        if (cat3Name) {
+          const c3 = (c2.children || []).find((c) => c.categoryName === cat3Name);
+          if (!c3) { rowErrors.push({ rowIndex: excelRowNumber, productName, success: false, message: `3차카테고리 "${cat3Name}"를 찾을 수 없어요.` }); return; }
+          category3Id = c3.id;
+        }
+      }
+    }
+
+    let brandId = null;
+    if (brandName) {
+      const b = brands.find((br) => br.brandNameKr === brandName);
+      if (!b) { rowErrors.push({ rowIndex: excelRowNumber, productName, success: false, message: `브랜드 "${brandName}"를 찾을 수 없어요.` }); return; }
+      brandId = b.id;
+    }
+
+    const options = parseOptionsCell(row[25]);
+
+    requests.push({
+      __rowIndex: excelRowNumber,
+      barcode: parseTextCell(row[0]),
+      productNumber: parseTextCell(row[1]),
+      productName,
+      spec: parseTextCell(row[3]),
+      consumerPrice: parseNumberCell(row[4]),
+      recommendedPrice: parseNumberCell(row[5]),
+      unit: parseTextCell(row[6]),
+      unitQuantity: parseNumberCell(row[7]),
+      packQuantity: parseNumberCell(row[8]),
+      category1Id, category2Id, category3Id, brandId,
+      countryOfOrigin: parseTextCell(row[13]),
+      sellerPrice1: parseNumberCell(row[14]),
+      sellerPrice2: parseNumberCell(row[15]),
+      sellerPrice3: parseNumberCell(row[16]),
+      keyword: parseTextCell(row[17]),
+      description: parseTextCell(row[18]),
+      stockOutYn: parseYn(row[19]),
+      discontinuedYn: parseYn(row[20]),
+      bundleYn: parseYn(row[21]),
+      importedYn: parseYn(row[22]),
+      newRegisteredYn: parseYn(row[23]),
+      newProductYn: parseYn(row[24]),
+      hasOptionYn: options.length > 0,
+      options,
+    });
+  });
+
+  return { requests, rowErrors };
+}
+
+const BULK_BATCH_SIZE = 30; // 이 개수씩 나눠서 서버로 보내면서 진행률을 갱신합니다
+
+function showBulkProgress(processed, total) {
+  document.getElementById('bulkResultDone').style.display = 'none';
+  document.getElementById('bulkProgressWrap').style.display = 'block';
+  updateBulkProgress(processed, total);
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkResultModal')).show();
+}
+
+function updateBulkProgress(processed, total) {
+  const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+  document.getElementById('bulkProgressBar').style.width = pct + '%';
+  document.getElementById('bulkProgressPercent').textContent = pct + '%';
+  document.getElementById('bulkProgressLabel').textContent = `${processed} / ${total}건 처리 중...`;
+}
+
+function showBulkResult(successCount, failCount, rows) {
+  document.getElementById('bulkProgressWrap').style.display = 'none';
+  document.getElementById('bulkResultDone').style.display = 'block';
+  document.getElementById('bulkResultSummary').innerHTML = `
+    <span class="ok"><b>${successCount}</b>건 성공</span>
+    <span class="fail"><b>${failCount}</b>건 실패</span>
+  `;
+  document.getElementById('bulkResultTableBody').innerHTML = rows.map((r) => `
+    <tr class="${r.success ? 'bulk-result-row-ok' : 'bulk-result-row-fail'}">
+      <td>${r.rowIndex}</td>
+      <td>${escapeHtml(r.productName || '-')}</td>
+      <td>${r.success ? '성공' : '실패'}</td>
+      <td>${escapeHtml(r.message || '')}</td>
+    </tr>
+  `).join('');
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkResultModal')).show();
+}
+
+async function handleBulkUpload(file) {
+  const btn = document.getElementById('bulkUploadBtn');
+  const originalHtml = btn.innerHTML;
+  btn.classList.add('is-loading');
+  btn.textContent = '처리 중...';
+
+  try {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1 }).slice(1); // 헤더 행 제외
+    const rows = allRows.filter((r) => r && r.some((cell) => cell !== undefined && cell !== ''));
+
+    if (rows.length === 0) {
+      alert('엑셀에 등록할 데이터가 없어요. 양식을 다운로드해서 확인해주세요.');
+      return;
+    }
+
+    const { requests, rowErrors } = await buildBulkRequests(rows);
+    const total = rows.length; // 파싱 단계 실패 행도 포함한 전체 대상 건수
+
+    let successCount = 0;
+    let failCount = rowErrors.length;
+    const resultRows = [...rowErrors];
+
+    showBulkProgress(rowErrors.length, total); // 파싱 단계에서 걸러진 행은 이미 처리된 걸로 집계
+
+    // BULK_BATCH_SIZE개씩 나눠서 순차적으로 서버에 보내고, 배치가 끝날 때마다 진행률을 갱신합니다.
+    for (let i = 0; i < requests.length; i += BULK_BATCH_SIZE) {
+      const batch = requests.slice(i, i + BULK_BATCH_SIZE);
+      const payload = batch.map(({ __rowIndex, ...req }) => req);
+
+      const serverResult = await fetchJSON(`${API_BASE}/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      serverResult.rows.forEach((r, idx) => {
+        r.rowIndex = batch[idx].__rowIndex;
+        resultRows.push(r);
+      });
+      successCount += serverResult.successCount;
+      failCount += serverResult.failCount;
+
+      updateBulkProgress(rowErrors.length + i + batch.length, total);
+    }
+
+    resultRows.sort((a, b) => a.rowIndex - b.rowIndex);
+    showBulkResult(successCount, failCount, resultRows);
+    if (successCount > 0) loadProducts();
+  } catch (err) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('bulkResultModal')).hide();
+    alert('엑셀 파일을 처리하는 중 오류가 발생했어요: ' + err.message);
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.innerHTML = originalHtml;
+  }
+}
+
+document.getElementById('bulkTemplateBtn').addEventListener('click', downloadBulkTemplate);
+document.getElementById('bulkUploadBtn').addEventListener('click', () => {
+  document.getElementById('bulkUploadFileInput').click();
+});
+document.getElementById('bulkUploadFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  e.target.value = ''; // 같은 파일을 다시 선택해도 change 이벤트가 발생하도록 초기화
+  if (file) handleBulkUpload(file);
+});
+
 // ── 초기 로드 ──────────────────────────────
 
 setupCategoryCascade('reg');
 setupCategoryCascade('edit');
 loadBrandOptions(document.getElementById('regBrand'));
 loadBrandOptions(document.getElementById('editBrand'));
+
+// 상단바 검색창(searchNavUrl이 없으면 페이지가 직접 처리하는 구조 — topbar-search.js 참고)
+// 키를 눌렀다 뗄 때마다(keyup) 바로 목록에 반영됩니다. 한영 오타 제안을 클릭했을 때는
+// topbar-search.js가 input 이벤트를 대신 쏴주기 때문에 그것도 같이 받아줍니다.
+function handleTopbarSearchChange(e) {
+  searchQuery = e.target.value.trim();
+  renderTable();
+}
+document.getElementById('topbarSearchInput').addEventListener('keyup', handleTopbarSearchChange);
+document.getElementById('topbarSearchInput').addEventListener('input', handleTopbarSearchChange);
+
 loadProducts();

@@ -61,6 +61,17 @@ public class ProductDtos {
             List<ProductOptionRequest> options
     ) {}
 
+    /**
+     * 엑셀 대량등록 결과 — 행 하나하나가 성공/실패했는지, 실패했다면 왜 실패했는지 프론트가 표로 보여줄 수 있게 합니다.
+     * rowIndex는 엑셀 파일 기준 행 번호입니다(1행=헤더이므로 데이터는 2행부터 시작).
+     */
+    /** 바코드 중복 등록 확인 결과 — 등록 화면의 "등록확인" 버튼 응답입니다 */
+    public record BarcodeCheckResult(boolean exists) {}
+
+    public record BulkCreateRowResult(int rowIndex, String productName, boolean success, String message) {}
+
+    public record BulkCreateResult(int successCount, int failCount, List<BulkCreateRowResult> rows) {}
+
     public record ProductResponse(
             Long id,
             String barcode,

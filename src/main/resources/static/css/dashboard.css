@@ -277,6 +277,9 @@
 
   /* table */
   table{ width:100%; border-collapse:collapse; }
+  .table-scroll{ overflow-x:auto; }
+  /* 창이 좁아져도 상품명이 줄바꿈되지 않고, 대신 테이블 전체가 넓어지면서 가로 스크롤됩니다 */
+  .dash-recent-table th, .dash-recent-table td{ white-space:nowrap; }
   thead th{
     text-align:left; font-size:11px; font-weight:600; color:var(--text-faint); padding:10px 16px;
     border-bottom:1px solid var(--line-soft); white-space:nowrap;
@@ -306,7 +309,10 @@
   .cal-nav button{ width:22px; height:22px; border-radius:5px; background:var(--surface-2); border:1px solid var(--line); color:var(--text-dim); display:flex; align-items:center; justify-content:center; }
   .cal-nav svg{ width:11px; height:11px; }
   .cal-month{ font-size:13px; font-weight:700; font-family:var(--mono); }
-  .cal-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; transition:opacity .22s ease, transform .22s ease; }
+  /* 월 이동 시: 나가는 쪽은 fade-out + 살짝 slide, 들어오는 쪽은 반대편에서 fade-in + slide */
+  .cal-grid.cal-anim-out{ opacity:0; transform:translateX(var(--cal-out-x, -16px)); }
+  .cal-grid.cal-anim-in{ transition:none; opacity:0; transform:translateX(var(--cal-in-x, 16px)); }
   .cal-dow{ font-size:10px; color:var(--text-faint); text-align:center; padding:4px 0 8px; font-weight:600; }
   .cal-cell{
     aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
