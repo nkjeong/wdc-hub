@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 공지사항</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<style>
+  /* 공지사항 화면 전용 스타일 (색은 기존 테마를 따라가도록 상속/반투명 위주로 지정) */
+  .notice-list { display:flex; flex-direction:column; gap:10px; }
+  details.notice-item { border:1px solid rgba(128,128,128,.3); border-radius:8px; }
+  details.notice-item[open] { border-color:#b8892b; }
+  details.notice-item > summary {
+    list-style:none; cursor:pointer; padding:13px 16px;
+    display:flex; align-items:center; gap:12px; border-radius:8px;
+  }
+  details.notice-item > summary::-webkit-details-marker { display:none; }
+  details.notice-item > summary:hover { background:rgba(128,128,128,.08); }
+  details.notice-item > summary:focus-visible { outline:2px solid #b8892b; outline-offset:2px; }
+  .n-title { flex:1; font-weight:700; word-break:break-word; }
+  .n-date { font-size:12.5px; opacity:.65; white-space:nowrap; }
+  .n-clip { display:inline-flex; opacity:.65; }
+  .n-chevron { display:inline-flex; opacity:.55; transition:transform .2s; }
+  details[open] .n-chevron { transform:rotate(180deg); }
+
+  .n-body { padding:2px 18px 18px; border-top:1px solid rgba(128,128,128,.2); }
+  .n-content { white-space:pre-wrap; word-break:break-word; line-height:1.75; padding-top:14px; max-width:72ch; }
+  .n-content.empty { opacity:.55; }
+  .n-attach {
+    margin-top:16px; padding:10px 14px; border-radius:6px;
+    border:1px solid rgba(184,137,43,.45); background:rgba(184,137,43,.10);
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .n-attach .fname { font-size:13.5px; word-break:break-all; }
+  .n-attach .btn { text-decoration:none; white-space:nowrap; }
+
+  .tag-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11.5px; font-weight:700; background:#6c757d; color:#fff; white-space:nowrap; }
+  .tag-badge[data-label="업데이트"] { background:#0d6efd; }
+  .tag-badge[data-label="점검"] { background:#dc6b19; }
+  .tag-badge[data-label="안내"] { background:#6c757d; }
+  .tag-badge[data-label="신규"] { background:#198754; }
+  .tag-badge[data-label="소비자가"] { background:#7b4fc9; }
+  .tag-badge[data-label="단가인상"] { background:#c62f3d; }
+
+  .notice-empty { text-align:center; padding:48px 0; opacity:.65; }
+
+  @media (prefers-reduced-motion: reduce) { .n-chevron { transition:none; } }
+  @media (max-width:576px) { .n-date { display:none; } }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='notice-board')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${#strings.isEmpty(companyName) ? '회' : #strings.substring(companyName, 0, 1)},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">공지사항<span>제목을 누르면 내용과 첨부파일이 펼쳐져요</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">전체 공지<span class="n" th:text="${#lists.size(notices)} + '건'">0건</span></div>
+        </div>
+        <div class="panel-body">
+          <div th:if="${#lists.isEmpty(notices)}" class="notice-empty">아직 등록된 공지사항이 없어요.</div>
+
+          <div class="notice-list" th:unless="${#lists.isEmpty(notices)}">
+            <details class="notice-item" th:each="n : ${notices}">
+              <summary>
+                <span class="tag-badge" th:attr="data-label=${n.tagLabel}" th:text="${n.tagLabel}"></span>
+                <span class="n-title" th:text="${n.title}"></span>
+                <span class="n-clip" th:if="${n.attachmentUrl != null}" title="첨부파일 있음" aria-label="첨부파일 있음">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </span>
+                <span class="n-date" th:text="${#temporals.format(n.createdAt, 'yyyy-MM-dd')}"></span>
+                <span class="n-chevron" aria-hidden="true">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </summary>
+
+              <div class="n-body">
+                <div class="n-content"
+                     th:classappend="${n.content == null or #strings.isEmpty(n.content)} ? 'empty'"
+                     th:text="${n.content == null or #strings.isEmpty(n.content)} ? '별도 내용이 없는 공지예요.' : ${n.content}"></div>
+
+                <div class="n-attach" th:if="${n.attachmentUrl != null}">
+                  <span class="fname" th:text="${n.attachmentFileName != null} ? ${n.attachmentFileName} : '첨부파일'"></span>
+                  <a class="btn gold" th:href="@{/notices/{id}/download(id=${n.id})}">다운로드</a>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+</body>
+</html>

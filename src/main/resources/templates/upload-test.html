@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업로드 API 테스트</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+    background: #0f1216; color: #ecedef; max-width: 720px; margin: 40px auto; padding: 0 20px;
+  }
+  h1 { font-size: 20px; margin-bottom: 6px; }
+  p.sub { color: #9198a6; font-size: 13px; margin-top: 0; margin-bottom: 24px; }
+  label { display: block; font-size: 12.5px; color: #9198a6; margin: 14px 0 6px; }
+  input[type=text] {
+    width: 100%; background: #14171d; border: 1px solid #262b33; border-radius: 8px;
+    padding: 10px 12px; color: #ecedef; font-size: 13px;
+  }
+  input[type=file] {
+    width: 100%; background: #14171d; border: 1px solid #262b33; border-radius: 8px;
+    padding: 10px 12px; color: #9198a6; font-size: 13px;
+  }
+  button {
+    margin-top: 20px; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #d4a62a;
+    background: #d4a62a; color: #1a1400; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  button:hover { opacity: .9; }
+  button:disabled { opacity: .5; cursor: default; }
+  #result {
+    margin-top: 24px; padding: 16px; background: #14171d; border: 1px solid #262b33; border-radius: 10px;
+    display: none;
+  }
+  #result.show { display: block; }
+  .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1d2129; font-size: 12.5px; }
+  .row:last-child { border-bottom: none; }
+  .row .k { color: #9198a6; }
+  .row .v { font-family: ui-monospace, monospace; }
+  .status-ok { color: #34c97e; }
+  .status-err { color: #f0615b; }
+  pre {
+    background: #0a0c10; border: 1px solid #1d2129; border-radius: 8px; padding: 12px;
+    font-size: 12px; white-space: pre-wrap; word-break: break-all; margin-top: 10px; max-height: 300px; overflow-y: auto;
+  }
+  .found-url {
+    margin-top: 12px; padding: 12px; background: rgba(212,166,42,.1); border: 1px solid #d4a62a;
+    border-radius: 8px; font-size: 12.5px;
+  }
+  .found-url a { color: #d4a62a; word-break: break-all; }
+  .hint { font-size: 11.5px; color: #5c6472; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>업로드 API 테스트</h1>
+<p class="sub">파일 하나를 실제로 보내보고, 서버가 뭐라고 응답하는지 그대로 보여드려요. URL/필드명은 바꿔서 테스트할 수 있어요.</p>
+
+<label>업로드 URL</label>
+<input type="text" id="uploadUrl" value="https://wdc-hub.synology.me/upload/">
+
+<label>파일 필드명 (서버가 기대하는 이름 — 모르면 기본값 "file"로 먼저 시도)</label>
+<input type="text" id="fieldName" value="file">
+
+<label>테스트할 파일</label>
+<input type="file" id="fileInput">
+
+<button id="uploadBtn">업로드 테스트</button>
+
+<div id="result">
+  <div class="row"><span class="k">상태</span><span class="v" id="resStatus">-</span></div>
+  <div class="row"><span class="k">Content-Type</span><span class="v" id="resContentType">-</span></div>
+  <label style="margin-top:14px;">응답 본문 (원본 그대로)</label>
+  <pre id="resBody">-</pre>
+  <div class="found-url" id="foundUrlBox" style="display:none;">
+    <strong>응답 안에서 URL로 보이는 걸 찾았어요:</strong><br>
+    <a id="foundUrlLink" href="#" target="_blank"></a>
+  </div>
+</div>
+
+<p class="hint" id="corsHint" style="display:none;">
+  ⚠️ 요청 자체가 실패했다면(CORS), 브라우저 개발자도구(F12) → Network 탭에서 이 요청을 클릭해 실제 상태코드/응답을 확인해주세요.
+  다른 도메인으로 보내는 요청이라 서버가 CORS를 허용 안 하면 이 페이지에서 응답 내용을 못 읽어올 수 있어요.
+</p>
+
+<script>
+const uploadBtn = document.getElementById('uploadBtn');
+const resultBox = document.getElementById('result');
+const corsHint = document.getElementById('corsHint');
+
+uploadBtn.addEventListener('click', async () => {
+  const url = document.getElementById('uploadUrl').value.trim();
+  const fieldName = document.getElementById('fieldName').value.trim() || 'file';
+  const file = document.getElementById('fileInput').files[0];
+
+  if (!url) { alert('업로드 URL을 입력해주세요.'); return; }
+  if (!file) { alert('테스트할 파일을 선택해주세요.'); return; }
+
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = '업로드 중...';
+  resultBox.classList.remove('show');
+  corsHint.style.display = 'none';
+
+  const formData = new FormData();
+  formData.append(fieldName, file);
+
+  try {
+    const res = await fetch(url, { method: 'POST', body: formData });
+    const contentType = res.headers.get('content-type') || '(없음)';
+    const text = await res.text();
+
+    document.getElementById('resStatus').textContent = `${res.status} ${res.statusText}`;
+    document.getElementById('resStatus').className = 'v ' + (res.ok ? 'status-ok' : 'status-err');
+    document.getElementById('resContentType').textContent = contentType;
+
+    // JSON이면 예쁘게, 아니면 원본 그대로
+    let displayText = text;
+    try {
+      displayText = JSON.stringify(JSON.parse(text), null, 2);
+    } catch (e) { /* JSON이 아니면 그냥 원본 텍스트 사용 */ }
+    document.getElementById('resBody').textContent = displayText || '(빈 응답)';
+
+    // 응답 안에서 http(s):// 로 시작하는 URL을 찾아서 보여줌
+    const urlMatch = text.match(/https?:\/\/[^\s"'<>]+/);
+    const foundUrlBox = document.getElementById('foundUrlBox');
+    if (urlMatch) {
+      document.getElementById('foundUrlLink').href = urlMatch[0];
+      document.getElementById('foundUrlLink').textContent = urlMatch[0];
+      foundUrlBox.style.display = 'block';
+    } else {
+      foundUrlBox.style.display = 'none';
+    }
+
+    resultBox.classList.add('show');
+  } catch (err) {
+    document.getElementById('resStatus').textContent = '요청 실패: ' + err.message;
+    document.getElementById('resStatus').className = 'v status-err';
+    document.getElementById('resContentType').textContent = '-';
+    document.getElementById('resBody').textContent = '(응답을 받지 못했어요 — 아래 안내 참고)';
+    document.getElementById('foundUrlBox').style.display = 'none';
+    resultBox.classList.add('show');
+    corsHint.style.display = 'block';
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = '업로드 테스트';
+  }
+});
+</script>
+
+</body>
+</html>

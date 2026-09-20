@@ -6,6 +6,8 @@ import kr.co.wdchub.sellerdata.domain.MemberRole;
 import kr.co.wdchub.sellerdata.domain.MemberStatus;
 import kr.co.wdchub.sellerdata.dto.SignupForm;
 import kr.co.wdchub.sellerdata.repository.MemberRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +23,14 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
-                          FileStorageService fileStorageService) {
+                          FileStorageService fileStorageService, NotificationService notificationService) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.fileStorageService = fileStorageService;
+        this.notificationService = notificationService;
     }
 
     public boolean isLoginIdDuplicate(String loginId) {
@@ -67,13 +71,30 @@ public class MemberService {
                 .termsAgreedAt(form.isAgreeTerms() ? LocalDateTime.now() : null)
                 .build();
 
-        return memberRepository.save(member);
+        Member saved = memberRepository.save(member);
+
+        // 관리자에게 벨 알림 + 시놀로지 Chat 알림 (연락처/이메일 같은 개인정보는 Chat에 보내지 않습니다)
+        notificationService.notifyAdmins(
+                "MEMBER_SIGNUP_NEW",
+                "새 회원가입 신청",
+                saved.getCompanyName() + " · " + saved.getLoginId(),
+                "/admin/members",
+                "회사명: " + saved.getCompanyName() + "\n"
+                        + "대표자: " + saved.getCeoName() + "\n"
+                        + "아이디: " + saved.getLoginId());
+
+        return saved;
     }
 
     // ---- 관리자 회원관리 ----
 
     public List<Member> getAllMembersOrderByCreatedAtDesc() {
         return memberRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    /** 관리자 회원관리 화면 페이지네이션용 — page는 0부터 시작합니다 */
+    public Page<Member> getMembersPage(int page, int size) {
+        return memberRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(page, size));
     }
 
     public long getPendingCount() {

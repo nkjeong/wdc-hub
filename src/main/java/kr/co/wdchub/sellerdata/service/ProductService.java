@@ -85,7 +85,9 @@ public class ProductService {
         productImageService.deleteFileList(product.getDetailImageUrls());
         productImageService.deleteFileList(product.getDetailImageViewUrls());
 
+        // 옵션(자식) 먼저 지우고 DB에 반영한 뒤, 상품(부모)을 지웁니다.
         productOptionRepository.deleteAllByProduct_Id(id);
+        productOptionRepository.flush();
         productRepository.delete(product);
     }
 
@@ -119,6 +121,7 @@ public class ProductService {
                 p.getBrand() != null ? p.getBrand().getManufacturerName() : null,
                 p.getBrand() != null ? p.getBrand().getImporterName() : null,
                 p.getCountryOfOrigin(),
+                p.getCertification(),
                 p.getSellerPrice1(),
                 p.getSellerPrice2(),
                 p.getSellerPrice3(),
@@ -163,6 +166,8 @@ public class ProductService {
         product.setCategory3(resolveCategory3(req.category3Id()));
         product.setBrand(resolveBrand(req.brandId()));
         product.setCountryOfOrigin(req.countryOfOrigin());
+        // 프론트에서 항상 "해당사항없음" 또는 입력값을 보내주지만, 혹시 비어오는 경우(대량등록 등)를 대비한 기본값입니다.
+        product.setCertification(req.certification() != null && !req.certification().isBlank() ? req.certification() : "해당사항없음");
         product.setSellerPrice1(req.sellerPrice1());
         product.setSellerPrice2(req.sellerPrice2());
         product.setSellerPrice3(req.sellerPrice3());
@@ -218,6 +223,9 @@ public class ProductService {
     /** 옵션은 저장할 때마다 기존 것을 전부 지우고 새로 등록합니다 (상세이미지 교체 방식과 동일) */
     private void applyOptions(Product product, ProductRequest req) {
         productOptionRepository.deleteAllByProduct_Id(product.getId());
+        // 삭제를 DB에 먼저 반영합니다. flush 없이 바로 같은 옵션코드(OPT-상품id-순번)를 insert하면
+        // Hibernate가 insert를 delete보다 먼저 실행해서 option_code 유니크 키 중복 오류가 납니다.
+        productOptionRepository.flush();
 
         boolean hasOption = Boolean.TRUE.equals(req.hasOptionYn());
         if (!hasOption || req.options() == null || req.options().isEmpty()) return;
@@ -278,6 +286,8 @@ public class ProductService {
      */
     private String toAbsoluteUrl(String relativePath) {
         if (relativePath == null || relativePath.isBlank()) return null;
+        // 시놀로지 등 외부 파일 서버가 이미 완전한 URL을 돌려준 경우엔 그대로 씁니다 (다시 조합하면 깨짐).
+        if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) return relativePath;
         String path = relativePath.startsWith("/") ? relativePath : "/" + relativePath;
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path(path)

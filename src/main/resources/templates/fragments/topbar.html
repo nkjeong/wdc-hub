@@ -53,9 +53,11 @@
     <button th:if="${showCalcBtn}" class="btn gold">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h2M12 10h2M16 10h2"/></svg>판매가 계산기
     </button>
-    <div th:if="${showBell}" class="icon-btn">
+    <!-- 알림 벨: 모든 페이지에 표시됩니다. 안 읽은 알림 개수는 notification-bell.js가 숫자로 채웁니다.
+         (showBell 값은 더 이상 쓰지 않지만, 기존 페이지들이 넘기고 있어서 파라미터는 그대로 둡니다.) -->
+    <div class="icon-btn notif-bell" id="notifBell" role="button" tabindex="0" aria-label="알림" aria-haspopup="true" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-      <span class="dot"></span>
+      <span class="notif-badge" id="notifBadge" style="display:none;"></span>
     </div>
 
     <!-- 회사명 + 아바타. 마우스를 올리면 회원정보/로그아웃 드롭다운이 나옵니다. -->
@@ -83,6 +85,10 @@
   <script th:src="@{/js/category-menu.js}"></script>
   <!-- 검색창 한영 오타 변환 제안 스크립트 — topbar를 쓰는 모든 페이지에 자동 포함됩니다 -->
   <script th:src="@{/js/topbar-search.js}"></script>
+  <!-- 상품정보 수정 요청 팝업 스크립트 — topbar를 쓰는 모든 페이지에 자동 포함됩니다 -->
+  <script th:src="@{/js/product-request.js}"></script>
+  <!-- 상단 벨 아이콘 알림 스크립트 — topbar를 쓰는 모든 페이지에 자동 포함됩니다 -->
+  <script th:src="@{/js/notification-bell.js}"></script>
 </div>
 
 </body>

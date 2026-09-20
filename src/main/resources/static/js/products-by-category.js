@@ -465,6 +465,13 @@ function buildProductDetailHTML(raw) {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
           이 상품 다운로드
         </button>
+        <button type="button" class="pd-request-btn" data-pd-request
+                data-product-id="${raw.id}"
+                data-product-name="${encodeURIComponent(raw.productName || '')}"
+                data-product-barcode="${encodeURIComponent(raw.barcode || '')}">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          정보수정 요청
+        </button>
       </div>
     </div>
 
@@ -575,7 +582,7 @@ const EXCEL_COLUMNS = [
   ['id', 'ID'], ['barcode', '바코드'], ['productNumber', '품번'], ['productName', '상품명'], ['spec', '규격'],
   ['category1Name', '1차카테고리'], ['category2Name', '2차카테고리'], ['category3Name', '3차카테고리'],
   ['brandName', '브랜드'], ['manufacturerName', '제조사'], ['importerName', '수입사'],
-  ['countryOfOrigin', '원산지'], ['unit', '단위'], ['unitQuantity', '단위수량'], ['packQuantity', '입수량'],
+  ['countryOfOrigin', '원산지'], ['certification', '인증사항'], ['unit', '단위'], ['unitQuantity', '단위수량'], ['packQuantity', '입수량'],
   ['consumerPrice', '소비자가'], ['recommendedPrice', '권장판매가'], ['__supplyPrice', '공급가'],
   ['keyword', '키워드'], ['description', '상세설명'],
   ['stockOutYn', '품절여부'], ['discontinuedYn', '단종여부'], ['bundleYn', '번들여부'], ['importedYn', '수입여부'],
@@ -583,6 +590,21 @@ const EXCEL_COLUMNS = [
   ['mainImageThumbUrl', '대표이미지(썸네일)'], ['mainImageDetailUrl', '대표이미지(500px)'], ['mainImageMediumUrl', '대표이미지(중간)'], ['mainImageOriginalUrl', '대표이미지(원본)'], ['detailImageUrls', '상세이미지(원본)'], ['detailImageViewUrls', '상세이미지(520px)'],
   ['createdAt', '등록일'], ['updatedAt', '수정일'],
 ];
+
+// 엑셀 옵션목록 형식: 옵션명:옵션값[바코드],옵션값[바코드]  (옵션명이 여러 개면 ;로 구분, 공백 없음)
+// 예) 색상:블랙[8801234000011],네이비[8801234000028]
+// 옵션 바코드가 없으면 대괄호 없이 옵션값만 씁니다.
+function formatOptionsForExcel(options) {
+  const groups = new Map();
+  options.forEach((o) => {
+    const name = String(o.optionName ?? '').trim();
+    const value = String(o.optionValue ?? '').trim();
+    const barcode = String(o.optionBarcode ?? '').trim();
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(barcode ? `${value}[${barcode}]` : value);
+  });
+  return Array.from(groups, ([name, values]) => `${name}:${values.join(',')}`).join(';');
+}
 
 function toExcelRow(raw) {
   const row = {};
@@ -592,7 +614,7 @@ function toExcelRow(raw) {
       value = gradeSellerPrice(raw); // 회원 등급에 맞는 공급가 하나만 (판매가1~3 원본은 노출하지 않음)
     } else if (key === 'options') {
       value = Array.isArray(value) && value.length
-        ? value.map((o) => `${o.optionName}:${o.optionValue}${o.stockQuantity != null ? '(재고 ' + o.stockQuantity + ')' : ''}`).join('; ')
+        ? formatOptionsForExcel(value)
         : '';
     } else if (typeof value === 'boolean') {
       value = value ? 'Y' : 'N';

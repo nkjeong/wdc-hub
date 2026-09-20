@@ -95,9 +95,11 @@
               <td>
                 <div class="row-actions" th:if="${m.status.name() == 'PENDING'}">
                   <form th:action="@{/admin/members/{id}/approve(id=${m.id})}" method="post">
+                    <input type="hidden" name="page" th:value="${currentPage}">
                     <button type="submit" class="btn-approve">승인</button>
                   </form>
                   <form th:action="@{/admin/members/{id}/reject(id=${m.id})}" method="post">
+                    <input type="hidden" name="page" th:value="${currentPage}">
                     <button type="submit" class="btn-reject">거절</button>
                   </form>
                 </div>
@@ -106,6 +108,15 @@
             </tr>
           </tbody>
         </table>
+        </div>
+        <div class="pagination" th:if="${totalPages > 1}">
+          <a class="page-btn" th:classappend="${currentPage == 0} ? ' disabled'"
+             th:href="@{/admin/members(page=${currentPage - 1})}">‹</a>
+          <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+             class="page-btn" th:classappend="${i == currentPage} ? ' active'"
+             th:href="@{/admin/members(page=${i})}" th:text="${i + 1}">1</a>
+          <a class="page-btn" th:classappend="${currentPage >= totalPages - 1} ? ' disabled'"
+             th:href="@{/admin/members(page=${currentPage + 1})}">›</a>
         </div>
       </div>
 
@@ -142,6 +153,7 @@
 
           <div class="detail-section-title">등급 관리</div>
           <form th:action="@{/admin/members/{id}/grade(id=${m.id})}" method="post" class="grade-form">
+            <input type="hidden" name="page" th:value="${currentPage}">
             <select name="grade" class="grade-select">
               <option value="NORMAL" th:selected="${m.grade.name() == 'NORMAL'}">일반회원</option>
               <option value="VIP" th:selected="${m.grade.name() == 'VIP'}">VIP회원</option>
@@ -171,9 +183,11 @@
 
           <div class="row-actions" th:if="${m.status.name() == 'PENDING'}" style="margin-top:20px;">
             <form th:action="@{/admin/members/{id}/approve(id=${m.id})}" method="post" style="flex:1;">
+              <input type="hidden" name="page" th:value="${currentPage}">
               <button type="submit" class="btn-approve" style="width:100%;">승인</button>
             </form>
             <form th:action="@{/admin/members/{id}/reject(id=${m.id})}" method="post" style="flex:1;">
+              <input type="hidden" name="page" th:value="${currentPage}">
               <button type="submit" class="btn-reject" style="width:100%;">거절</button>
             </form>
           </div>

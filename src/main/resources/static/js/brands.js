@@ -245,15 +245,26 @@ brandForm.addEventListener('submit', async (e) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      closeForm();
+      await loadBrands();
     } else {
-      await fetchJSON(API_BASE, {
+      const created = await fetchJSON(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(basePayload),
       });
+
+      // 다른 페이지(예: 상품 등록 화면)에서 "브랜드등록" 버튼으로 새 창을 띄워 여기로 들어온 경우,
+      // 부모 창에 새로 만든 브랜드를 알려주고 이 창은 자동으로 닫습니다.
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({ type: 'brand-created', brandId: created.id, brandNameKr: created.brandNameKr }, window.location.origin);
+        window.close();
+        return;
+      }
+
+      closeForm();
+      await loadBrands();
     }
-    closeForm();
-    await loadBrands();
   } catch (err) {
     alert(err.message);
   }
@@ -312,3 +323,9 @@ document.getElementById('brandNameUseBtn').addEventListener('click', () => {
 
 loadCategory1Options();
 loadBrands();
+
+// 다른 화면에서 "브랜드등록" 버튼으로 새 창을 띄울 때 ?action=create를 붙여서 여는데,
+// 그 경우 목록 화면 대신 바로 등록 폼을 열어줍니다.
+if (new URLSearchParams(window.location.search).get('action') === 'create') {
+  openCreateForm();
+}

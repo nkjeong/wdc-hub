@@ -4,7 +4,8 @@
 
   // ---- 최근 등록 상품 (탭별 최근 10개 고정, 실제 데이터: /products/list) ----
   const PRODUCTS_API = document.body.dataset.productsApi;
-  const RECENT_LIMIT = 10;
+  const RECENT_LIMIT = 11; // 페이지당 개수
+  let recentPage = 1;
 
   // 회원 등급별로 판매가1~3 중 하나만 보여줍니다.
   // NORMAL -> 판매가1, GOLD -> 판매가2, VIP -> 판매가3
@@ -105,7 +106,7 @@
     ['id', 'ID'], ['barcode', '바코드'], ['productNumber', '품번'], ['productName', '상품명'], ['spec', '규격'],
     ['category1Name', '1차카테고리'], ['category2Name', '2차카테고리'], ['category3Name', '3차카테고리'],
     ['brandName', '브랜드'], ['manufacturerName', '제조사'], ['importerName', '수입사'],
-    ['countryOfOrigin', '원산지'], ['unit', '단위'], ['unitQuantity', '단위수량'], ['packQuantity', '입수량'],
+    ['countryOfOrigin', '원산지'], ['certification', '인증사항'], ['unit', '단위'], ['unitQuantity', '단위수량'], ['packQuantity', '입수량'],
     ['consumerPrice', '소비자가'], ['recommendedPrice', '권장판매가'], ['__supplyPrice', '공급가'],
     ['keyword', '키워드'], ['description', '상세설명'],
     ['stockOutYn', '품절여부'], ['discontinuedYn', '단종여부'], ['bundleYn', '번들여부'], ['importedYn', '수입여부'],
@@ -113,6 +114,21 @@
     ['mainImageThumbUrl', '대표이미지(썸네일)'], ['mainImageDetailUrl', '대표이미지(500px)'], ['mainImageMediumUrl', '대표이미지(중간)'], ['mainImageOriginalUrl', '대표이미지(원본)'], ['detailImageUrls', '상세이미지(원본)'], ['detailImageViewUrls', '상세이미지(520px)'],
     ['createdAt', '등록일'], ['updatedAt', '수정일'],
   ];
+
+  // 엑셀 옵션목록 형식: 옵션명:옵션값[바코드],옵션값[바코드]  (옵션명이 여러 개면 ;로 구분, 공백 없음)
+  // 예) 색상:블랙[8801234000011],네이비[8801234000028]
+  // 옵션 바코드가 없으면 대괄호 없이 옵션값만 씁니다.
+  function formatOptionsForExcel(options) {
+    const groups = new Map();
+    options.forEach((o) => {
+      const name = String(o.optionName ?? '').trim();
+      const value = String(o.optionValue ?? '').trim();
+      const barcode = String(o.optionBarcode ?? '').trim();
+      if (!groups.has(name)) groups.set(name, []);
+      groups.get(name).push(barcode ? `${value}[${barcode}]` : value);
+    });
+    return Array.from(groups, ([name, values]) => `${name}:${values.join(',')}`).join(';');
+  }
 
   function toExcelRow(raw) {
     const row = {};
@@ -122,7 +138,7 @@
       value = gradeSellerPrice(raw); // 회원 등급에 맞는 공급가 하나만 (판매가1~3 원본은 노출하지 않음)
     } else if (key === 'options') {
         value = Array.isArray(value) && value.length
-          ? value.map((o) => `${o.optionName}:${o.optionValue}${o.stockQuantity != null ? '(재고 ' + o.stockQuantity + ')' : ''}`).join('; ')
+          ? formatOptionsForExcel(value)
           : '';
       } else if (typeof value === 'boolean') {
         value = value ? 'Y' : 'N';
@@ -194,6 +210,13 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
             이 상품 다운로드
           </button>
+        <button type="button" class="pd-request-btn" data-pd-request
+                data-product-id="${raw.id}"
+                data-product-name="${encodeURIComponent(raw.productName || '')}"
+                data-product-barcode="${encodeURIComponent(raw.barcode || '')}">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          정보수정 요청
+        </button>
         </div>
       </div>
 
@@ -227,14 +250,40 @@
     if (product) openProductDetailOffcanvas(product);
   });
 
-  /** 선택된 탭 기준으로 필터링한 뒤, 최신 10개만 고정으로 보여줍니다 (전체 목록/페이징은 /products 페이지에서) */
+  /** 선택된 탭 기준으로 필터링한 뒤, 페이지당 10개씩 페이징해서 보여줍니다 (전체 목록은 /products 페이지에서) */
   function updateView() {
     const activeTab = document.querySelector('#tabs .tab.active');
     const filter = activeTab ? activeTab.dataset.cat : 'all';
-    const rows = products
-      .filter(p => filter === 'all' || p.cat === filter)
-      .slice(0, RECENT_LIMIT);
-    renderRows(rows);
+    const filtered = products.filter(p => filter === 'all' || p.cat === filter);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / RECENT_LIMIT));
+    if (recentPage > totalPages) recentPage = totalPages;
+
+    const start = (recentPage - 1) * RECENT_LIMIT;
+    renderRows(filtered.slice(start, start + RECENT_LIMIT));
+    renderRecentPagination(totalPages);
+  }
+
+  function renderRecentPagination(totalPages) {
+    const el = document.getElementById('dashRecentPagination');
+    el.innerHTML = '';
+    if (totalPages <= 1) return;
+
+    const addBtn = (label, page, opts = {}) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'page-btn' + (opts.active ? ' active' : '');
+      btn.textContent = label;
+      btn.disabled = !!opts.disabled;
+      btn.addEventListener('click', () => { recentPage = page; updateView(); });
+      el.appendChild(btn);
+    };
+
+    addBtn('‹', recentPage - 1, { disabled: recentPage === 1 });
+    for (let p = 1; p <= totalPages; p++) {
+      addBtn(String(p), p, { active: p === recentPage });
+    }
+    addBtn('›', recentPage + 1, { disabled: recentPage === totalPages });
   }
 
   /** 번들상품 진열 — 번들상품 중 최신 10개 (/products/list가 이미 최신순이라 필터링만 하면 됨) */
@@ -289,8 +338,57 @@
     if(!tab) return;
     document.querySelectorAll('#tabs .tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
+    recentPage = 1;
     updateView();
   });
+
+  // ── 카드광고1 (관리자가 상품관리에서 고른 상품 최대 5개, fade in/out으로 순환) ──
+  async function loadCardAd1() {
+    const panel = document.getElementById('cardAd1Panel');
+    const slidesEl = document.getElementById('cardAd1Slides');
+    try {
+      const res = await fetch('/card-ads/card-ad-1');
+      if (!res.ok) throw new Error('카드광고를 불러오지 못했어요.');
+      const items = await res.json();
+      if (!items || items.length === 0) {
+        panel.style.display = 'none';
+        return;
+      }
+
+      panel.style.display = 'block';
+      slidesEl.innerHTML = items.map((p, idx) => `
+        <button type="button" class="card-ad-slide${idx === 0 ? ' active' : ''}" data-id="${p.id}">
+          <div class="card-ad-image">
+            ${p.mainImageDetailUrl || p.mainImageMediumUrl || p.mainImageThumbUrl
+              ? `<img src="${escapeHtml(p.mainImageDetailUrl || p.mainImageMediumUrl || p.mainImageThumbUrl)}" alt="">`
+              : ''}
+          </div>
+          <div class="card-ad-info">
+            <div class="card-ad-name">${escapeHtml(p.productName)}</div>
+            <div class="card-ad-price">${won(p.consumerPrice)}</div>
+          </div>
+        </button>
+      `).join('');
+
+      const slideEls = Array.from(slidesEl.querySelectorAll('.card-ad-slide'));
+      slideEls.forEach((slideEl, idx) => {
+        slideEl.addEventListener('click', () => openProductDetailOffcanvas({ raw: items[idx] }));
+      });
+
+      if (slideEls.length > 1) {
+        let current = 0;
+        setInterval(() => {
+          slideEls[current].classList.remove('active');
+          current = (current + 1) % slideEls.length;
+          slideEls[current].classList.add('active');
+        }, 3500);
+      }
+    } catch (e) {
+      panel.style.display = 'none';
+    }
+  }
+
+  loadCardAd1();
 
   loadProducts();
 

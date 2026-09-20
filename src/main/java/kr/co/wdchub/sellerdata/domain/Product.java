@@ -88,6 +88,10 @@ public class Product {
     @Column(name = "country_of_origin", length = 50)
     private String countryOfOrigin;
 
+    /** 인증사항 — 값이 없으면 "해당사항없음"이 그대로 저장됩니다 (라디오 버튼: 인증사항입력/해당사항없음) */
+    @Column(name = "certification", length = 255)
+    private String certification;
+
     // ── 판매가 (셀러 등급별 공급가) ──
 
     @Column(name = "seller_price1", precision = 12, scale = 2)

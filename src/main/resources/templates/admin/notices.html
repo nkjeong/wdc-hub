@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 공지사항관리</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/brands.css}">
+<style>
+  /* 공지사항 화면 전용 스타일 (색은 기존 테마를 따라가도록 상속/반투명 위주로 지정) */
+  .tag-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11.5px; font-weight:700; background:#6c757d; color:#fff; white-space:nowrap; }
+  .tag-badge[data-label="업데이트"] { background:#0d6efd; }
+  .tag-badge[data-label="점검"] { background:#dc6b19; }
+  .tag-badge[data-label="안내"] { background:#6c757d; }
+  .tag-badge[data-label="신규"] { background:#198754; }
+  .tag-badge[data-label="소비자가"] { background:#7b4fc9; }
+  .tag-badge[data-label="단가인상"] { background:#c62f3d; }
+  .notice-title-cell { font-weight:700; word-break:break-word; }
+  .notice-file-cell { font-size:12.5px; opacity:.75; word-break:break-all; }
+  .btn.danger { color:#c62f3d; }
+  .field-hint { font-size:12px; opacity:.65; margin-top:4px; }
+  textarea.calc-input { width:100%; resize:vertical; min-height:180px; line-height:1.6; font-family:inherit; }
+  .current-file { font-size:12.5px; margin-top:6px; opacity:.8; display:none; }
+  .up-progress { display:none; margin-top:14px; }
+  .up-track { height:10px; border-radius:6px; background:rgba(128,128,128,.25); overflow:hidden; }
+  .up-bar { height:100%; width:0%; background:#b8892b; transition:width .15s linear; }
+  .up-bar.done { background:#198754; }
+  .up-bar.fail { background:#c62f3d; }
+  .up-text { font-size:12.5px; margin-top:6px; opacity:.85; }
+  .form-error { display:none; margin-top:12px; padding:9px 12px; border-radius:6px; background:rgba(198,47,61,.12); color:#c62f3d; font-size:13px; }
+  @media (prefers-reduced-motion: reduce) { .up-bar { transition:none; } }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='notices')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='공지 제목으로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${#strings.isEmpty(companyName) ? '관' : #strings.substring(companyName, 0, 1)},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">공지사항관리<span>등록한 공지는 회원 화면의 대시보드와 공지사항 페이지에 바로 표시돼요</span></div>
+      </div>
+
+      <!-- 목록 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">전체 공지<span class="n" id="noticeCount">0건</span></div>
+          <div class="panel-action">
+            <button type="button" id="btnNew" class="btn gold">+ 공지 등록</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:110px">구분</th>
+                <th>제목</th>
+                <th style="width:240px">첨부파일</th>
+                <th style="width:110px">등록일</th>
+                <th style="width:130px">관리</th>
+              </tr>
+            </thead>
+            <tbody id="noticeBody">
+              <tr class="empty-row"><td colspan="5">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 등록/수정 폼 -->
+      <div class="panel" id="noticeFormPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title" id="noticeFormTitle">공지 등록</div>
+          <div class="panel-action">
+            <button type="button" id="btnCloseForm" class="btn">닫기</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <form id="noticeForm" onsubmit="return false;">
+            <div class="calc-row">
+              <div class="calc-field">
+                <label for="fTag">구분<span class="req">*</span></label>
+                <select id="fTag" class="calc-input">
+                  <option th:each="t : ${tags}" th:value="${t.name()}" th:text="${t.label}"></option>
+                </select>
+              </div>
+              <div class="calc-field" style="flex:3;">
+                <label for="fTitle">제목<span class="req">*</span></label>
+                <input type="text" id="fTitle" class="calc-input" maxlength="255" placeholder="공지 제목을 입력하세요">
+              </div>
+            </div>
+
+            <div class="calc-field">
+              <label for="fContent">내용</label>
+              <textarea id="fContent" class="calc-input" rows="8" placeholder="회원에게 보여줄 내용을 입력하세요. 줄바꿈은 그대로 표시돼요."></textarea>
+            </div>
+
+            <div class="calc-field">
+              <label for="fFile">첨부파일 <span style="font-weight:400; opacity:.7;">(선택, 최대 20MB)</span></label>
+              <input type="file" id="fFile" class="calc-input"
+                     accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.hwp,.doc,.docx,.xls,.xlsx,.zip">
+              <div class="field-hint">jpg, png, webp, gif, pdf, hwp, doc(x), xls(x), zip 파일을 올릴 수 있어요.</div>
+              <div class="current-file" id="currentFile"></div>
+            </div>
+
+            <div class="up-progress" id="upProgress" aria-live="polite">
+              <div class="up-track"><div class="up-bar" id="upBar"></div></div>
+              <div class="up-text" id="upText"></div>
+            </div>
+
+            <div class="form-error" id="formError" role="alert"></div>
+
+            <div class="form-actions">
+              <button type="button" class="btn gold" id="btnSave">등록</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+<script>
+(function () {
+  'use strict';
+
+  var MAX_BYTES = 20 * 1024 * 1024;
+  var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content;
+  var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var notices = [];
+  var editingId = null;
+  var uploading = false;
+
+  // ── 목록 ─────────────────────────────────────
+  function fmtDate(v) {
+    if (!v) return '';
+    if (Array.isArray(v)) return v[0] + '-' + String(v[1]).padStart(2, '0') + '-' + String(v[2]).padStart(2, '0');
+    return String(v).slice(0, 10);
+  }
+
+  function loadList() {
+    fetch('/admin/notices/list', { headers: { 'Accept': 'application/json' } })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (data) { notices = data; renderList(); })
+      .catch(function () {
+        $('noticeBody').innerHTML = '<tr class="empty-row"><td colspan="5">목록을 불러오지 못했어요. 새로고침해 주세요.</td></tr>';
+      });
+  }
+
+  function renderList() {
+    var keyword = (($('topbarSearchInput') || {}).value || '').trim().toLowerCase();
+    var rows = notices.filter(function (n) {
+      return !keyword || (n.title || '').toLowerCase().indexOf(keyword) !== -1;
+    });
+
+    $('noticeCount').textContent = rows.length + '건';
+    var body = $('noticeBody');
+    body.innerHTML = '';
+
+    if (!rows.length) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="5">' +
+        (keyword ? '검색 결과가 없어요.' : '등록된 공지가 없어요. \'+ 공지 등록\'으로 첫 공지를 작성해 보세요.') + '</td></tr>';
+      return;
+    }
+
+    rows.forEach(function (n) {
+      var tr = document.createElement('tr');
+
+      var tdTag = document.createElement('td');
+      var badge = document.createElement('span');
+      badge.className = 'tag-badge';
+      badge.setAttribute('data-label', n.tagLabel || '');
+      badge.textContent = n.tagLabel || '';
+      tdTag.appendChild(badge);
+
+      var tdTitle = document.createElement('td');
+      tdTitle.className = 'notice-title-cell';
+      tdTitle.textContent = n.title;
+
+      var tdFile = document.createElement('td');
+      tdFile.className = 'notice-file-cell';
+      tdFile.textContent = n.attachmentFileName || '-';
+
+      var tdDate = document.createElement('td');
+      tdDate.textContent = fmtDate(n.createdAt);
+
+      var tdAct = document.createElement('td');
+      tdAct.style.whiteSpace = 'nowrap';
+      var bEdit = document.createElement('button');
+      bEdit.type = 'button'; bEdit.className = 'btn'; bEdit.textContent = '수정';
+      bEdit.style.marginRight = '6px';
+      bEdit.addEventListener('click', function () { openEdit(n.id); });
+      var bDel = document.createElement('button');
+      bDel.type = 'button'; bDel.className = 'btn danger'; bDel.textContent = '삭제';
+      bDel.addEventListener('click', function () { removeNotice(n); });
+      tdAct.appendChild(bEdit); tdAct.appendChild(bDel);
+
+      tr.appendChild(tdTag); tr.appendChild(tdTitle); tr.appendChild(tdFile);
+      tr.appendChild(tdDate); tr.appendChild(tdAct);
+      body.appendChild(tr);
+    });
+  }
+
+  // 상단 검색창: 제목으로 목록 필터링
+  var searchInput = $('topbarSearchInput');
+  if (searchInput) searchInput.addEventListener('input', renderList);
+
+  // ── 폼 ───────────────────────────────────────
+  function resetProgress() {
+    $('upProgress').style.display = 'none';
+    $('upBar').style.width = '0%';
+    $('upBar').className = 'up-bar';
+    $('upText').textContent = '';
+  }
+  function showError(msg) { var e = $('formError'); e.textContent = msg; e.style.display = 'block'; }
+  function clearError() { $('formError').style.display = 'none'; }
+  function setBusy(busy) {
+    uploading = busy;
+    $('btnSave').disabled = busy;
+    $('btnCloseForm').disabled = busy;
+    ['fTag', 'fTitle', 'fContent', 'fFile'].forEach(function (id) { $(id).disabled = busy; });
+  }
+  function showForm() {
+    var p = $('noticeFormPanel');
+    p.style.display = '';
+    p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function openNew() {
+    editingId = null;
+    $('noticeFormTitle').textContent = '공지 등록';
+    $('btnSave').textContent = '등록';
+    $('fTag').selectedIndex = 0;
+    $('fTitle').value = '';
+    $('fContent').value = '';
+    $('fFile').value = '';
+    $('currentFile').style.display = 'none';
+    clearError(); resetProgress(); setBusy(false);
+    showForm();
+    $('fTitle').focus({ preventScroll: true });
+  }
+
+  function openEdit(id) {
+    var n = notices.find(function (x) { return x.id === id; });
+    if (!n) return;
+    editingId = id;
+    $('noticeFormTitle').textContent = '공지 수정';
+    $('btnSave').textContent = '저장';
+    $('fTag').value = n.tag;
+    $('fTitle').value = n.title || '';
+    $('fContent').value = n.content || '';
+    $('fFile').value = '';
+    var cf = $('currentFile');
+    if (n.attachmentFileName) {
+      cf.textContent = '현재 첨부: ' + n.attachmentFileName + ' (새 파일을 선택하면 교체돼요)';
+      cf.style.display = 'block';
+    } else {
+      cf.style.display = 'none';
+    }
+    clearError(); resetProgress(); setBusy(false);
+    showForm();
+  }
+
+  function closeForm() {
+    if (uploading) return;
+    $('noticeFormPanel').style.display = 'none';
+  }
+
+  // ── 저장 (XHR: 업로드 진행률 표시) ─────────────
+  function save() {
+    if (uploading) return;
+    clearError();
+
+    var title = $('fTitle').value.trim();
+    if (!title) { showError('제목을 입력해 주세요.'); $('fTitle').focus(); return; }
+
+    var file = $('fFile').files[0];
+    if (file && file.size > MAX_BYTES) {
+      showError('첨부파일은 20MB 이하만 올릴 수 있어요. 선택한 파일: ' + (file.size / 1024 / 1024).toFixed(1) + 'MB');
+      return;
+    }
+
+    var fd = new FormData();
+    fd.append('tag', $('fTag').value);
+    fd.append('title', title);
+    fd.append('content', $('fContent').value);
+    if (file) fd.append('file', file);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open(editingId ? 'PUT' : 'POST', editingId ? '/admin/notices/' + editingId : '/admin/notices');
+    if (csrfToken && csrfHeader) xhr.setRequestHeader(csrfHeader, csrfToken);
+
+    var bar = $('upBar'), text = $('upText');
+    if (file) {
+      $('upProgress').style.display = 'block';
+      text.textContent = '업로드 준비 중...';
+      xhr.upload.onprogress = function (e) {
+        if (!e.lengthComputable) return;
+        var pct = Math.round(e.loaded / e.total * 100);
+        bar.style.width = pct + '%';
+        if (pct >= 100) {
+          // 브라우저 → 서버 전송이 끝나도 서버가 NAS로 다시 보내는 시간이 남아 있어요.
+          text.textContent = '서버로 전송 완료. NAS에 저장하는 중이에요...';
+        } else {
+          text.textContent = '업로드 중 ' + pct + '% (' + (e.loaded / 1024 / 1024).toFixed(1) + ' / ' + (e.total / 1024 / 1024).toFixed(1) + 'MB)';
+        }
+      };
+    }
+
+    xhr.onload = function () {
+      setBusy(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (file) { bar.style.width = '100%'; bar.className = 'up-bar done'; text.textContent = '저장됐어요.'; }
+        $('noticeFormPanel').style.display = 'none';
+        loadList();
+      } else {
+        bar.className = 'up-bar fail';
+        var msg = (xhr.responseText || '').trim();
+        if (xhr.status === 415) msg = '요청 형식이 맞지 않아요. AdminNoticeController가 multipart를 받도록 수정됐는지 확인해 주세요.';
+        if (xhr.status === 413) msg = '파일이 너무 커요. 서버의 업로드 용량 설정을 확인해 주세요.';
+        showError(msg || ('저장하지 못했어요. (상태코드 ' + xhr.status + ')'));
+      }
+    };
+    xhr.onerror = function () {
+      setBusy(false);
+      bar.className = 'up-bar fail';
+      showError('서버와 통신하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.');
+    };
+
+    setBusy(true);
+    xhr.send(fd);
+  }
+
+  // ── 삭제 ─────────────────────────────────────
+  function removeNotice(n) {
+    if (!window.confirm('\'' + n.title + '\' 공지를 삭제할까요? 삭제하면 되돌릴 수 없어요.')) return;
+    var headers = {};
+    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+    fetch('/admin/notices/' + n.id, { method: 'DELETE', headers: headers })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); loadList(); })
+      .catch(function () { window.alert('삭제하지 못했어요. 잠시 후 다시 시도해 주세요.'); });
+  }
+
+  $('btnNew').addEventListener('click', openNew);
+  $('btnCloseForm').addEventListener('click', closeForm);
+  $('btnSave').addEventListener('click', save);
+  window.addEventListener('beforeunload', function (e) {
+    if (uploading) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  loadList();
+})();
+</script>
+</body>
+</html>

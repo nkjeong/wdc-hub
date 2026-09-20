@@ -65,6 +65,11 @@ function switchTab(name) {
   tabs.forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.getElementById('productListPanel').style.display = name === 'list' ? 'block' : 'none';
   document.getElementById('productRegisterPanel').style.display = name === 'register' ? 'block' : 'none';
+  document.getElementById('productCardAd1Panel').style.display = name === 'cardad1' ? 'block' : 'none';
+  const bannerPanel = document.getElementById('productBannerPanel');
+  if (bannerPanel) bannerPanel.style.display = name === 'banner' ? 'block' : 'none';
+  if (name === 'cardad1') loadCardAd1();
+  if (name === 'banner' && window.loadBanners) window.loadBanners();
 }
 
 // ── 카테고리 1→2→3 계단식 선택 ──────────────────
@@ -204,6 +209,7 @@ function createOptionRow(prefix, values) {
   row.innerHTML = `
     <input type="text" class="calc-input opt-name" placeholder="옵션명 (예: 색상)">
     <input type="text" class="calc-input opt-value" placeholder="옵션값 (예: 빨강)">
+    <input type="text" class="calc-input opt-barcode" placeholder="옵션별 바코드">
     <input type="number" class="calc-input opt-price" placeholder="추가금액">
     <input type="number" class="calc-input opt-stock" placeholder="재고수량">
     <button type="button" class="btn-del-option" title="삭제">✕</button>
@@ -211,6 +217,7 @@ function createOptionRow(prefix, values) {
   if (values) {
     row.querySelector('.opt-name').value = values.optionName ?? '';
     row.querySelector('.opt-value').value = values.optionValue ?? '';
+    row.querySelector('.opt-barcode').value = values.optionBarcode ?? '';
     row.querySelector('.opt-price').value = values.additionalPrice ?? '';
     row.querySelector('.opt-stock').value = values.stockQuantity ?? '';
   }
@@ -250,6 +257,7 @@ function collectOptions(prefix) {
     .map((row) => ({
       optionName: row.querySelector('.opt-name').value.trim(),
       optionValue: row.querySelector('.opt-value').value.trim(),
+      optionBarcode: row.querySelector('.opt-barcode').value.trim() || null,
       additionalPrice: row.querySelector('.opt-price').value ? Number(row.querySelector('.opt-price').value) : 0,
       stockQuantity: row.querySelector('.opt-stock').value ? Number(row.querySelector('.opt-stock').value) : null,
     }))
@@ -287,6 +295,36 @@ function hideProgress(prefix) {
   document.getElementById(`${prefix}ProgressWrap`).style.display = 'none';
 }
 
+// ── 인증사항 (라디오: 해당사항없음/인증사항입력) ──────────
+
+function syncCertVisibility(prefix) {
+  const mode = document.querySelector(`input[name="${prefix}CertMode"]:checked`)?.value || 'none';
+  const inputEl = document.getElementById(`${prefix}CertificationInput`);
+  inputEl.style.display = mode === 'input' ? 'block' : 'none';
+}
+
+function getCertificationValue(prefix) {
+  const mode = document.querySelector(`input[name="${prefix}CertMode"]:checked`)?.value || 'none';
+  if (mode === 'input') {
+    return document.getElementById(`${prefix}CertificationInput`).value.trim() || '해당사항없음';
+  }
+  return '해당사항없음';
+}
+
+/** 서버 값을 보고 라디오/입력란 상태를 맞춥니다 (수정 화면 채우기, 복사 기능에서 사용) */
+function setCertificationUI(prefix, certification) {
+  const hasValue = certification && certification.trim() !== '' && certification.trim() !== '해당사항없음';
+  document.querySelector(`input[name="${prefix}CertMode"][value="${hasValue ? 'input' : 'none'}"]`).checked = true;
+  document.getElementById(`${prefix}CertificationInput`).value = hasValue ? certification : '';
+  syncCertVisibility(prefix);
+}
+
+['reg', 'edit'].forEach((prefix) => {
+  document.querySelectorAll(`input[name="${prefix}CertMode"]`).forEach((radio) => {
+    radio.addEventListener('change', () => syncCertVisibility(prefix));
+  });
+});
+
 // ── 등록/수정 공통 payload + multipart 전송 ──────────
 
 function collectPayload(prefix) {
@@ -305,6 +343,7 @@ function collectPayload(prefix) {
     category3Id: numOrNull(`${prefix}Category3`),
     brandId: numOrNull(`${prefix}Brand`),
     countryOfOrigin: strOrNull(`${prefix}CountryOfOrigin`),
+    certification: getCertificationValue(prefix),
     sellerPrice1: numOrNull(`${prefix}SellerPrice1`),
     sellerPrice2: numOrNull(`${prefix}SellerPrice2`),
     sellerPrice3: numOrNull(`${prefix}SellerPrice3`),
@@ -399,6 +438,9 @@ function categoryLabel(p) {
 }
 
 let searchQuery = ''; // 상단바 검색창에서 입력한 검색어 (상품명/바코드/품번 대상)
+const PAGE_SIZE = 10;
+let currentPage = 1;
+const productPaginationEl = document.getElementById('productPagination');
 
 function getFilteredProducts() {
   if (!searchQuery) return allProducts;
@@ -411,17 +453,24 @@ function getFilteredProducts() {
 }
 
 function renderTable() {
-  const rows = getFilteredProducts();
-  productCountEl.textContent = rows.length + '건';
+  const filtered = getFilteredProducts();
+  productCountEl.textContent = filtered.length + '건';
 
   if (allProducts.length === 0) {
     tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">등록된 상품이 없어요. "상품 등록" 탭에서 추가해보세요.</td></tr>';
+    productPaginationEl.innerHTML = '';
     return;
   }
-  if (rows.length === 0) {
+  if (filtered.length === 0) {
     tableBody.innerHTML = '<tr class="empty-row"><td colspan="10">검색 결과가 없어요.</td></tr>';
+    productPaginationEl.innerHTML = '';
     return;
   }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const rows = filtered.slice(start, start + PAGE_SIZE);
 
   tableBody.innerHTML = rows.map((p) => `
     <tr>
@@ -446,6 +495,32 @@ function renderTable() {
       </td>
     </tr>
   `).join('');
+
+  renderProductPagination(totalPages);
+}
+
+function renderProductPagination(totalPages) {
+  productPaginationEl.innerHTML = '';
+  if (totalPages <= 1) return;
+
+  const addBtn = (label, page, opts = {}) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'page-btn' + (opts.active ? ' active' : '');
+    btn.textContent = label;
+    btn.disabled = !!opts.disabled;
+    btn.addEventListener('click', () => {
+      currentPage = page;
+      renderTable();
+    });
+    productPaginationEl.appendChild(btn);
+  };
+
+  addBtn('‹', currentPage - 1, { disabled: currentPage === 1 });
+  for (let p = 1; p <= totalPages; p++) {
+    addBtn(String(p), p, { active: p === currentPage });
+  }
+  addBtn('›', currentPage + 1, { disabled: currentPage === totalPages });
 }
 
 tableBody.addEventListener('click', (e) => {
@@ -474,6 +549,7 @@ async function copyToRegisterForm(p) {
   setVal('regProductName', p.productName);
   setVal('regSpec', p.spec);
   setVal('regCountryOfOrigin', p.countryOfOrigin);
+  setCertificationUI('reg', p.certification);
   setVal('regUnit', p.unit);
   setVal('regUnitQuantity', p.unitQuantity);
   setVal('regPackQuantity', p.packQuantity);
@@ -562,7 +638,8 @@ document.getElementById('regBarcodeCheckBtn').addEventListener('click', async ()
 // ── 상품 등록 ──────────────────────────────
 
 function resetRegisterForm() {
-  document.getElementById('registerForm').reset(); // file input도 함께 비워집니다
+  document.getElementById('registerForm').reset(); // file input도 함께 비워집니다 (라디오는 해당사항없음으로 되돌아감)
+  syncCertVisibility('reg');
   resetCategorySelection('reg');
   showMainImagePreview('reg', null);
   showDetailImagePreview('reg', [], '선택한 이미지가 여기에 미리보기로 표시돼요');
@@ -607,6 +684,7 @@ async function openEditOffcanvas(p) {
   setVal('editProductName', p.productName);
   setVal('editSpec', p.spec);
   setVal('editCountryOfOrigin', p.countryOfOrigin);
+  setCertificationUI('edit', p.certification);
   setVal('editUnit', p.unit);
   setVal('editUnitQuantity', p.unitQuantity);
   setVal('editPackQuantity', p.packQuantity);
@@ -1046,11 +1124,143 @@ document.getElementById('bulkUploadFileInput').addEventListener('change', (e) =>
   if (file) handleBulkUpload(file);
 });
 
+// ── 카드광고1 관리 ──────────────────────────────
+// 대시보드 카드광고 영역에 슬라이드로 노출할 상품을 최대 5개 고릅니다. 순서 = 저장한 순서 = 슬라이드 순서.
+
+const CARD_AD_SLOT_KEY = 'card-ad-1';
+let cardAd1Selected = []; // 지금 화면에서 고른 상품들 (ProductResponse 형태)
+
+async function loadCardAd1() {
+  try {
+    cardAd1Selected = await fetchJSON(`/admin/card-ads/${CARD_AD_SLOT_KEY}`);
+  } catch (e) {
+    cardAd1Selected = [];
+  }
+  renderCardAd1Selected();
+  document.getElementById('cardAd1SearchInput').value = '';
+  document.getElementById('cardAd1SearchResults').innerHTML = '';
+}
+
+function renderCardAd1Selected() {
+  const el = document.getElementById('cardAd1SelectedList');
+  if (cardAd1Selected.length === 0) {
+    el.innerHTML = '<div class="cardad-selected-empty">아직 선택된 상품이 없어요. 아래에서 검색해서 추가해주세요.</div>';
+    return;
+  }
+  el.innerHTML = cardAd1Selected.map((p, idx) => `
+    <div class="cardad-selected-row">
+      <span class="cardad-selected-order">${idx + 1}</span>
+      <div class="cardad-selected-thumb">
+        ${p.mainImageThumbUrl ? `<img src="${escapeHtml(p.mainImageThumbUrl)}" alt="">` : ''}
+      </div>
+      <span class="cardad-selected-name">${escapeHtml(p.productName)}</span>
+      <span class="cardad-selected-price">${p.consumerPrice != null ? '₩' + Number(p.consumerPrice).toLocaleString('ko-KR') : '-'}</span>
+      <button type="button" class="cardad-remove-btn" data-id="${p.id}" title="빼기">✕</button>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.cardad-remove-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      cardAd1Selected = cardAd1Selected.filter((p) => p.id !== Number(btn.dataset.id));
+      renderCardAd1Selected();
+      renderCardAd1SearchResults(document.getElementById('cardAd1SearchInput').value.trim());
+    });
+  });
+}
+
+function renderCardAd1SearchResults(query) {
+  const resultsEl = document.getElementById('cardAd1SearchResults');
+  if (!query) {
+    resultsEl.innerHTML = '';
+    return;
+  }
+
+  const q = query.toLowerCase();
+  const selectedIds = new Set(cardAd1Selected.map((p) => p.id));
+  const matches = allProducts.filter((p) => p.productName && p.productName.toLowerCase().includes(q)).slice(0, 20);
+
+  if (matches.length === 0) {
+    resultsEl.innerHTML = '<div class="cardad-selected-empty">검색 결과가 없어요.</div>';
+    return;
+  }
+
+  resultsEl.innerHTML = matches.map((p) => {
+    const already = selectedIds.has(p.id);
+    const full = cardAd1Selected.length >= 5;
+    return `
+      <div class="cardad-search-row">
+        <div class="cardad-search-thumb">${p.mainImageThumbUrl ? `<img src="${escapeHtml(p.mainImageThumbUrl)}" alt="">` : ''}</div>
+        <span class="cardad-search-name">${escapeHtml(p.productName)}</span>
+        <button type="button" class="cardad-add-btn" data-id="${p.id}" ${already || full ? 'disabled' : ''}>
+          ${already ? '추가됨' : '추가'}
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  resultsEl.querySelectorAll('.cardad-add-btn:not(:disabled)').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const product = allProducts.find((p) => p.id === Number(btn.dataset.id));
+      if (product && cardAd1Selected.length < 5 && !cardAd1Selected.some((p) => p.id === product.id)) {
+        cardAd1Selected.push(product);
+        renderCardAd1Selected();
+        renderCardAd1SearchResults(query);
+      }
+    });
+  });
+}
+
+document.getElementById('cardAd1SearchInput').addEventListener('keyup', (e) => {
+  renderCardAd1SearchResults(e.target.value.trim());
+});
+
+document.getElementById('cardAd1SaveBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('cardAd1SaveBtn');
+  btn.disabled = true;
+  try {
+    await fetchJSON(`/admin/card-ads/${CARD_AD_SLOT_KEY}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productIds: cardAd1Selected.map((p) => p.id) }),
+    });
+    alert('카드광고1을 저장했어요.');
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ── 초기 로드 ──────────────────────────────
 
 setupCategoryCascade('reg');
 setupCategoryCascade('edit');
 loadBrandOptions(document.getElementById('regBrand'));
+
+// ── 브랜드등록 팝업 연동 ──────────────────────────────
+// "브랜드등록" 버튼 -> 새 창에서 브랜드관리 페이지를 등록 폼이 바로 열린 상태로 띄우고,
+// 그 창에서 등록이 끝나면 postMessage로 알려줘서 이 페이지는 브랜드 select만 새로고침합니다.
+
+function reloadBrandSelect(selectToId) {
+  const selectEl = document.getElementById('regBrand');
+  const placeholder = selectEl.querySelector('option[value=""]');
+  selectEl.innerHTML = '';
+  selectEl.appendChild(placeholder || new Option('선택 안함', ''));
+  loadBrandOptions(selectEl).then(() => {
+    if (selectToId != null) selectEl.value = String(selectToId);
+  });
+}
+
+document.getElementById('regOpenBrandRegisterBtn').addEventListener('click', () => {
+  window.open('/admin/brands?action=create', 'brandRegisterPopup', 'width=900,height=820');
+});
+
+window.addEventListener('message', (e) => {
+  if (e.origin !== window.location.origin) return;
+  if (e.data && e.data.type === 'brand-created') {
+    reloadBrandSelect(e.data.brandId);
+  }
+});
 loadBrandOptions(document.getElementById('editBrand'));
 
 // 상단바 검색창(searchNavUrl이 없으면 페이지가 직접 처리하는 구조 — topbar-search.js 참고)
@@ -1058,6 +1268,7 @@ loadBrandOptions(document.getElementById('editBrand'));
 // topbar-search.js가 input 이벤트를 대신 쏴주기 때문에 그것도 같이 받아줍니다.
 function handleTopbarSearchChange(e) {
   searchQuery = e.target.value.trim();
+  currentPage = 1;
   renderTable();
 }
 document.getElementById('topbarSearchInput').addEventListener('keyup', handleTopbarSearchChange);

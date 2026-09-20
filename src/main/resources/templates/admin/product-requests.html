@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 요청관리</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/brands.css}">
+<style>
+  .rq-pill{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;
+    background:var(--surface-2); color:var(--text-dim); }
+  .rq-pill.RECEIVED{ background:rgba(91,140,255,.12); color:var(--blue); }
+  .rq-pill.IN_PROGRESS{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .rq-pill.DONE{ background:rgba(52,201,126,.12); color:var(--green); }
+  .rq-pill.REJECTED{ background:rgba(240,97,91,.12); color:var(--red); }
+  .rq-mono{ font-family:var(--mono); font-size:12px; color:var(--text-dim); white-space:nowrap; }
+  .rq-sub{ font-size:11.5px; color:var(--text-faint); margin-top:2px; }
+  .rq-content-cell{ max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  tr.rq-row{ cursor:pointer; }
+  tr.rq-row:hover td{ background:rgba(128,128,128,.06); }
+  tr.rq-row.selected td{ background:rgba(212,166,42,.08); }
+  .btn.danger{ color:var(--red); }
+  .rq-detail-grid{ display:grid; grid-template-columns:110px 1fr; gap:8px 14px; font-size:13px; margin-bottom:16px; }
+  .rq-detail-grid dt{ color:var(--text-faint); font-weight:600; }
+  .rq-detail-grid dd{ margin:0; word-break:break-word; }
+  .rq-content-box{ white-space:pre-wrap; word-break:break-word; line-height:1.65; padding:12px 14px; border-radius:8px;
+    background:var(--bg-raise); border:1px solid var(--line); margin-bottom:16px; font-size:13px; }
+  textarea.calc-input{ width:100%; resize:vertical; min-height:110px; line-height:1.6; font-family:inherit; }
+  .rq-status-filter{ width:auto; min-width:120px; }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='product-requests')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='회원, 상품명으로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${#strings.isEmpty(companyName) ? '관' : #strings.substring(companyName, 0, 1)},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">요청관리<span>회원이 보낸 상품정보 수정 요청을 확인하고 처리 상태와 답변을 남겨요</span></div>
+      </div>
+
+      <!-- 목록 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">전체 요청<span class="n" id="rqCount">0건</span></div>
+          <div class="panel-action">
+            <select id="rqStatusFilter" class="calc-input rq-status-filter" aria-label="상태 필터">
+              <option value="">전체 상태</option>
+              <option value="RECEIVED">접수</option>
+              <option value="IN_PROGRESS">처리중</option>
+              <option value="DONE">완료</option>
+              <option value="REJECTED">반려</option>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">상태</th>
+                <th style="width:130px">요청일</th>
+                <th>회원</th>
+                <th>상품</th>
+                <th style="width:90px">항목</th>
+                <th>요청 내용</th>
+              </tr>
+            </thead>
+            <tbody id="rqBody">
+              <tr class="empty-row"><td colspan="6">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 처리 폼 -->
+      <div class="panel" id="rqFormPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title">요청 처리</div>
+          <div class="panel-action">
+            <button type="button" id="rqCloseBtn" class="btn">닫기</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <dl class="rq-detail-grid">
+            <dt>요청일</dt><dd id="dDate"></dd>
+            <dt>회원</dt><dd id="dMember"></dd>
+            <dt>상품</dt><dd id="dProduct"></dd>
+            <dt>수정 항목</dt><dd id="dField"></dd>
+          </dl>
+          <div class="rq-content-box" id="dContent"></div>
+
+          <div class="calc-row">
+            <div class="calc-field">
+              <label for="fStatus">처리 상태</label>
+              <select id="fStatus" class="calc-input">
+                <option value="RECEIVED">접수</option>
+                <option value="IN_PROGRESS">처리중</option>
+                <option value="DONE">완료</option>
+                <option value="REJECTED">반려</option>
+              </select>
+            </div>
+          </div>
+          <div class="calc-field">
+            <label for="fNote">관리자 답변 <span style="font-weight:400; opacity:.7;">(요청한 회원에게 그대로 보여요)</span></label>
+            <textarea id="fNote" class="calc-input" maxlength="2000" placeholder="처리 결과나 반려 사유를 적어 주세요."></textarea>
+          </div>
+
+          <div class="form-actions" style="justify-content:space-between;">
+            <button type="button" class="btn danger" id="rqDeleteBtn">요청 삭제</button>
+            <button type="button" class="btn gold" id="rqSaveBtn">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+<script>
+(function () {
+  'use strict';
+
+  var API = '/admin/product-requests';
+  var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content;
+  var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  var all = [];
+  var selectedId = null;
+
+  function fmtDateTime(v) {
+    if (!v) return '';
+    if (Array.isArray(v)) {
+      var p = function (n) { return String(n).padStart(2, '0'); };
+      return v[0] + '-' + p(v[1]) + '-' + p(v[2]) + ' ' + p(v[3] || 0) + ':' + p(v[4] || 0);
+    }
+    return String(v).replace('T', ' ').slice(0, 16);
+  }
+
+  function headers(extra) {
+    var h = extra || {};
+    if (csrfToken && csrfHeader) h[csrfHeader] = csrfToken;
+    return h;
+  }
+
+  async function request(url, options) {
+    var res = await fetch(url, options);
+    if (!res.ok) {
+      var msg = '요청 처리 중 오류가 발생했어요. (상태코드 ' + res.status + ')';
+      try { var t = await res.text(); if (t) msg += '\n' + t.slice(0, 300); } catch (e) { /* ignore */ }
+      throw new Error(msg);
+    }
+    var text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  async function load() {
+    try {
+      all = await request(API + '/list', { headers: { 'Accept': 'application/json' } });
+      render();
+    } catch (e) {
+      $('rqBody').innerHTML = '<tr class="empty-row"><td colspan="6">목록을 불러오지 못했어요. 새로고침해 주세요.</td></tr>';
+    }
+  }
+
+  function filtered() {
+    var status = $('rqStatusFilter').value;
+    var kw = (($('topbarSearchInput') || {}).value || '').trim().toLowerCase();
+    return all.filter(function (r) {
+      if (status && r.status !== status) return false;
+      if (!kw) return true;
+      return [r.productName, r.productBarcode, r.requesterCompany, r.requesterUsername, r.content]
+        .some(function (v) { return (v || '').toLowerCase().indexOf(kw) !== -1; });
+    });
+  }
+
+  function render() {
+    var rows = filtered();
+    $('rqCount').textContent = rows.length + '건';
+    var body = $('rqBody');
+    body.innerHTML = '';
+
+    if (!rows.length) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="6">' + (all.length ? '조건에 맞는 요청이 없어요.' : '아직 들어온 요청이 없어요.') + '</td></tr>';
+      return;
+    }
+    rows.forEach(function (r) {
+      var tr = document.createElement('tr');
+      tr.className = 'rq-row' + (r.id === selectedId ? ' selected' : '');
+      tr.innerHTML =
+        '<td><span class="rq-pill ' + esc(r.status) + '">' + esc(r.statusLabel) + '</span></td>' +
+        '<td class="rq-mono">' + esc(fmtDateTime(r.createdAt)) + '</td>' +
+        '<td>' + esc(r.requesterCompany || '-') + '<div class="rq-sub">' + esc(r.requesterUsername) + '</div></td>' +
+        '<td>' + esc(r.productName) + (r.productBarcode ? '<div class="rq-sub rq-mono">' + esc(r.productBarcode) + '</div>' : '') + '</td>' +
+        '<td>' + esc(r.fieldLabel) + '</td>' +
+        '<td class="rq-content-cell" title="' + esc(r.content).replace(/"/g, '&quot;') + '">' + esc(r.content) + '</td>';
+      tr.addEventListener('click', function () { openDetail(r.id); });
+      body.appendChild(tr);
+    });
+  }
+
+  function openDetail(id) {
+    var r = all.find(function (x) { return x.id === id; });
+    if (!r) return;
+    selectedId = id;
+    $('dDate').textContent = fmtDateTime(r.createdAt);
+    $('dMember').textContent = (r.requesterCompany || '-') + ' (' + r.requesterUsername + ')';
+    $('dProduct').textContent = r.productName + (r.productBarcode ? ' · ' + r.productBarcode : '');
+    $('dField').textContent = r.fieldLabel;
+    $('dContent').textContent = r.content;
+    $('fStatus').value = r.status;
+    $('fNote').value = r.adminNote || '';
+    var panel = $('rqFormPanel');
+    panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    render();
+  }
+
+  function closeDetail() {
+    selectedId = null;
+    $('rqFormPanel').style.display = 'none';
+    render();
+  }
+
+  async function save() {
+    if (selectedId == null) return;
+    var btn = $('rqSaveBtn');
+    btn.disabled = true;
+    try {
+      var id = selectedId;
+      await request(API + '/' + id, {
+        method: 'PUT',
+        headers: headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status: $('fStatus').value, adminNote: $('fNote').value }),
+      });
+      // 서버(DB)에서 다시 읽어 와서, 실제로 저장된 값을 화면에 보여줍니다.
+      await load();
+      var saved = all.find(function (x) { return x.id === id; });
+      if (saved) {
+        $('fStatus').value = saved.status;
+        $('fNote').value = saved.adminNote || '';
+        alert('저장했어요.\n처리 상태: ' + saved.statusLabel + '\n관리자 답변: ' + (saved.adminNote ? saved.adminNote.length + '자 저장됨' : '없음'));
+      } else {
+        alert('저장했어요.');
+      }
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function remove() {
+    if (selectedId == null) return;
+    if (!window.confirm('이 요청을 삭제할까요? 요청한 회원의 내역에서도 사라지고 되돌릴 수 없어요.')) return;
+    try {
+      await request(API + '/' + selectedId, { method: 'DELETE', headers: headers() });
+      closeDetail();
+      await load();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  $('rqStatusFilter').addEventListener('change', render);
+  $('rqCloseBtn').addEventListener('click', closeDetail);
+  $('rqSaveBtn').addEventListener('click', save);
+  $('rqDeleteBtn').addEventListener('click', remove);
+  var topSearch = $('topbarSearchInput');
+  if (topSearch) topSearch.addEventListener('input', render);
+
+  load();
+})();
+</script>
+</body>
+</html>

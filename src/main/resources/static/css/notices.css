@@ -1,0 +1,11 @@
+/* 창이 좁아져도 제목 등이 줄바꿈되지 않고, 테이블이 넓어지며 가로 스크롤됩니다 */
+.admin-notice-table th, .admin-notice-table td{ white-space:nowrap; }
+.admin-notice-table td:nth-child(2){ white-space:normal; } /* 제목 칸만 길면 줄바꿈 허용 */
+
+.row-actions{ display:flex; gap:6px; }
+.btn-edit-row, .btn-del-row{
+  font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--text-dim);
+}
+.btn-edit-row:hover{ border-color:var(--gold); color:var(--gold); }
+.btn-del-row:hover{ background:var(--red); color:#fff; border-color:var(--red); }

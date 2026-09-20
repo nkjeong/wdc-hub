@@ -41,6 +41,8 @@
       <div class="tabs" id="productTabs">
         <div class="tab active" data-tab="list">상품 리스트</div>
         <div class="tab" data-tab="register">상품 등록</div>
+        <div class="tab" data-tab="cardad1">카드광고1</div>
+        <div class="tab" data-tab="banner">배너관리</div>
       </div>
 
       <!-- 상품 리스트 -->
@@ -80,6 +82,7 @@
             </tbody>
           </table>
         </div>
+        <div class="pagination" id="productPagination"></div>
       </div>
 
       <!-- 상품 등록 -->
@@ -117,6 +120,14 @@
             <div class="calc-row">
               <div class="calc-field"><label>규격</label><input type="text" id="regSpec" class="calc-input"></div>
               <div class="calc-field"><label>원산지<span class="req">*</span></label><input type="text" id="regCountryOfOrigin" class="calc-input" required></div>
+              <div class="calc-field full">
+                <label>인증사항</label>
+                <div class="cert-radio-group">
+                  <label class="cert-radio"><input type="radio" name="regCertMode" value="none" checked> 해당사항없음</label>
+                  <label class="cert-radio"><input type="radio" name="regCertMode" value="input"> 인증사항입력</label>
+                </div>
+                <input type="text" id="regCertificationInput" class="calc-input" style="display:none; margin-top:8px;" placeholder="인증사항을 입력해주세요">
+              </div>
             </div>
             <div class="calc-row three">
               <div class="calc-field"><label>단위<span class="req">*</span></label><input type="text" id="regUnit" class="calc-input" placeholder="예: EA, BOX" required></div>
@@ -130,7 +141,16 @@
               <div class="calc-field"><label>2차 카테고리</label><select id="regCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
               <div class="calc-field"><label>3차 카테고리</label><select id="regCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
             </div>
-            <div class="calc-field"><label>브랜드<span class="req">*</span></label><select id="regBrand" class="calc-input" required><option value="">선택 안함</option></select></div>
+            <div class="calc-field">
+              <label>브랜드<span class="req">*</span></label>
+              <div class="field-with-match-btn">
+                <select id="regBrand" class="calc-input" required><option value="">선택 안함</option></select>
+                <button type="button" class="btn-match" id="regOpenBrandRegisterBtn" title="새 창에서 브랜드를 등록합니다">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+                  브랜드등록
+                </button>
+              </div>
+            </div>
 
             <div class="section-label">가격</div>
             <div class="calc-row">
@@ -195,6 +215,77 @@
         </div>
       </div>
 
+      <!-- 카드광고1 관리 -->
+      <div class="panel tab-panel" id="productCardAd1Panel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title">카드광고1<span class="n">대시보드에 슬라이드로 노출할 상품, 최대 5개</span></div>
+          <button type="button" class="btn gold" id="cardAd1SaveBtn">저장</button>
+        </div>
+        <div class="panel-body">
+          <div class="cardad-selected" id="cardAd1SelectedList"></div>
+
+          <div class="calc-field" style="margin-top:18px;">
+            <label>상품 검색해서 추가</label>
+            <input type="text" id="cardAd1SearchInput" class="calc-input" placeholder="상품명으로 검색...">
+          </div>
+          <div class="cardad-search-results" id="cardAd1SearchResults"></div>
+        </div>
+      </div>
+
+      <!-- 배너관리: 대시보드 슬라이드 배너 2개를 한 화면에서 관리 -->
+      <div class="panel tab-panel" id="productBannerPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title">배너관리<span class="n">대시보드의 슬라이드 배너 2개 · 각각 최대 5장</span></div>
+          <button type="button" class="btn gold" id="bannerUploadAllBtn">선택한 이미지 모두 업로드</button>
+        </div>
+        <div class="panel-body">
+          <div class="banner-grid">
+
+            <section class="banner-slot" data-slot="super-flow">
+              <div class="banner-slot-head">
+                <div class="banner-slot-title">왼쪽 배너<span>대시보드 맨 왼쪽 카드</span></div>
+                <div class="banner-slot-count" data-count>0 / 5</div>
+              </div>
+              <div class="banner-thumbs" data-thumbs></div>
+              <div class="calc-field">
+                <label>이미지 추가</label>
+                <input type="file" class="file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif" data-file>
+                <div class="hint-text">한 번에 최대 5장 · 장당 10MB 이하 · jpg, png, webp, gif</div>
+                <div class="hint-text" data-remaining></div>
+              </div>
+              <div class="banner-selected" data-selected></div>
+              <div class="upload-progress-wrap" data-progress style="display:none;">
+                <div class="upload-progress-track"><div class="upload-progress-bar" data-bar></div></div>
+                <div class="upload-progress-label" data-progress-label></div>
+              </div>
+              <button type="button" class="btn gold banner-upload-btn" data-upload disabled>이 배너에 업로드</button>
+            </section>
+
+            <section class="banner-slot" data-slot="swiper-gl">
+              <div class="banner-slot-head">
+                <div class="banner-slot-title">오른쪽 배너<span>대시보드 맨 오른쪽 카드</span></div>
+                <div class="banner-slot-count" data-count>0 / 5</div>
+              </div>
+              <div class="banner-thumbs" data-thumbs></div>
+              <div class="calc-field">
+                <label>이미지 추가</label>
+                <input type="file" class="file-input" multiple accept=".jpg,.jpeg,.png,.webp,.gif" data-file>
+                <div class="hint-text">한 번에 최대 5장 · 장당 10MB 이하 · jpg, png, webp, gif</div>
+                <div class="hint-text" data-remaining></div>
+              </div>
+              <div class="banner-selected" data-selected></div>
+              <div class="upload-progress-wrap" data-progress style="display:none;">
+                <div class="upload-progress-track"><div class="upload-progress-bar" data-bar></div></div>
+                <div class="upload-progress-label" data-progress-label></div>
+              </div>
+              <button type="button" class="btn gold banner-upload-btn" data-upload disabled>이 배너에 업로드</button>
+            </section>
+
+          </div>
+          <div class="hint-text" style="margin-top:14px;">◀ ▶ 버튼으로 슬라이드 순서를 바꾸고, ✕ 로 삭제해요. 순서와 삭제는 바로 대시보드에 반영돼요.</div>
+        </div>
+      </div>
+
       <!-- footer -->
       <div th:replace="~{fragments/footer :: footer}"></div>
     </div>
@@ -229,6 +320,14 @@
     <div class="calc-row">
       <div class="calc-field"><label>규격</label><input type="text" id="editSpec" class="calc-input"></div>
       <div class="calc-field"><label>원산지</label><input type="text" id="editCountryOfOrigin" class="calc-input"></div>
+      <div class="calc-field full">
+        <label>인증사항</label>
+        <div class="cert-radio-group">
+          <label class="cert-radio"><input type="radio" name="editCertMode" value="none" checked> 해당사항없음</label>
+          <label class="cert-radio"><input type="radio" name="editCertMode" value="input"> 인증사항입력</label>
+        </div>
+        <input type="text" id="editCertificationInput" class="calc-input" style="display:none; margin-top:8px;" placeholder="인증사항을 입력해주세요">
+      </div>
     </div>
     <div class="calc-row three">
       <div class="calc-field"><label>단위</label><input type="text" id="editUnit" class="calc-input"></div>
@@ -347,5 +446,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script th:src="@{/js/ticker.js}"></script>
 <script th:src="@{/js/products.js}"></script>
+<script th:src="@{/js/admin-banners.js}"></script>
 </body>
 </html>

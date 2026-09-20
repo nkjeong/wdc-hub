@@ -170,7 +170,7 @@
   .page-date{ font-family:var(--mono); font-size:12px; color:var(--text-faint); }
 
   /* stat strip */
-  .stats{ display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; }
+  .stats{ display:grid; grid-template-columns:repeat(6, 1fr); gap:12px; }
   .stat-card{ background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
   .stat-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .stat-label{ font-size:12px; color:var(--text-dim); font-weight:500; }
@@ -368,6 +368,8 @@
   .notice-tag.notice{ background:rgba(212,166,42,.14); color:var(--gold); }
   .notice-tag.maint{ background:rgba(240,97,91,.14); color:var(--red); }
   .notice-tag.new{ background:rgba(52,201,126,.14); color:var(--green); }
+  .notice-tag.price{ background:rgba(155,107,255,.14); color:#9B6BFF; }
+  .notice-tag.price_up{ background:rgba(224,166,60,.16); color:var(--amber); }
   .notice-tt{ font-size:12.8px; color:var(--text); font-weight:500; }
   .notice-date{ margin-left:auto; font-size:11px; color:var(--text-faint); font-family:var(--mono); white-space:nowrap; }
 
@@ -655,7 +657,9 @@ button:disabled{ cursor:default; }
 .new-arrival-image{
   width:148px; height:148px; border-radius:8px; overflow:hidden; background:var(--surface-2);
   border:1px solid var(--line); flex-shrink:0;
+  transition:transform .2s ease;
 }
+.new-arrival-card:hover .new-arrival-image{ transform:translateY(-6px); }
 .new-arrival-image img{ width:100%; height:100%; object-fit:cover; display:block; }
 .new-arrival-image-empty{ width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:11px; }
 .new-arrival-name{
@@ -666,3 +670,33 @@ button:disabled{ cursor:default; }
 .new-arrival-brand{ font-size:11px; color:var(--text-faint); }
 .new-arrival-price{ font-family:var(--mono); font-size:13px; font-weight:700; color:var(--gold); }
 .new-arrival-card:hover .new-arrival-name{ color:var(--gold); }
+
+/* ---- 대시보드 카드광고 (상품 최대 5개, fade in/out 슬라이드) ---- */
+.card-ad-panel{ position:relative; overflow:hidden; }
+.card-ad-slides{ position:relative; width:100%; height:240px; }
+.card-ad-slide{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  background:none; border:none; padding:0; text-align:left; font-family:inherit; cursor:pointer;
+  opacity:0; pointer-events:none; transition:opacity .8s ease;
+}
+.card-ad-slide.active{ opacity:1; pointer-events:auto; }
+.card-ad-image{ flex:1; min-height:0; overflow:hidden; background:var(--surface-2); }
+.card-ad-image img{ width:100%; height:100%; object-fit:cover; display:block; }
+.card-ad-info{ padding:10px 12px; }
+.card-ad-name{ font-size:12.5px; font-weight:600; color:#C7CCD4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.card-ad-price{ font-family:var(--mono); font-size:13px; font-weight:700; color:var(--gold); margin-top:3px; }
+
+/* ---- 최근 등록 상품 페이지네이션 ---- */
+.pagination{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  padding:14px 16px; border-top:1px solid var(--line-soft);
+}
+/* 대시보드 "최근 등록 상품" 목록만 옆 카드광고 카드 높이에 맞춰 세로를 더 키움 */
+#dashRecentPagination{ padding:26px 16px; }
+.page-btn{
+  min-width:30px; height:30px; padding:0 8px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface-2); color:var(--text-dim); font-size:12px; font-family:var(--mono);
+}
+.page-btn:hover:not(:disabled):not(.active){ border-color:#3A4150; color:var(--text); }
+.page-btn.active{ background:var(--gold); color:#1A1400; border-color:var(--gold); font-weight:700; }
+.page-btn:disabled{ opacity:.35; cursor:default; }

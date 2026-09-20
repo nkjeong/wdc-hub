@@ -88,3 +88,7 @@
 .detail-row .v{ color:var(--text); font-weight:500; text-align:right; word-break:break-all; }
 .detail-row a.v{ color:var(--gold); text-decoration:none; }
 .detail-row a.v:hover{ text-decoration:underline; }
+
+/* 페이지네이션 — 서버 렌더링이라 <a> 태그로 만들어서, 버튼과 똑같이 보이게 보정합니다 */
+.pagination a.page-btn{ text-decoration:none; }
+.pagination a.page-btn.disabled{ opacity:.35; pointer-events:none; }

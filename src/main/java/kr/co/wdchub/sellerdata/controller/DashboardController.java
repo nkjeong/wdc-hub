@@ -3,6 +3,7 @@ package kr.co.wdchub.sellerdata.controller;
 import kr.co.wdchub.sellerdata.repository.ProductRepository;
 import kr.co.wdchub.sellerdata.security.CustomUserDetails;
 import kr.co.wdchub.sellerdata.service.MemberService;
+import kr.co.wdchub.sellerdata.service.NoticeService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,10 +17,12 @@ public class DashboardController {
 
     private final MemberService memberService;
     private final ProductRepository productRepository;
+    private final NoticeService noticeService;
 
-    public DashboardController(MemberService memberService, ProductRepository productRepository) {
+    public DashboardController(MemberService memberService, ProductRepository productRepository, NoticeService noticeService) {
         this.memberService = memberService;
         this.productRepository = productRepository;
+        this.noticeService = noticeService;
     }
 
     @GetMapping("/dashboard")
@@ -60,6 +63,9 @@ public class DashboardController {
         model.addAttribute("todayNormalCount", todayNormalCount);
         model.addAttribute("newProductCount", newProductCount);
         model.addAttribute("newRegisteredCount", newRegisteredCount);
+
+        // 대시보드 공지사항 위젯(최근 4개)
+        model.addAttribute("recentNotices", noticeService.getRecent(4));
 
         // templates/dashboard.html 을 렌더링합니다.
         // 상품 테이블 본문은 dashboard.js가 /products/list를 호출해서 채웁니다.
