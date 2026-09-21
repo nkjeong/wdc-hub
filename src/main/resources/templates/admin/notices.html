@@ -19,7 +19,9 @@
   .tag-badge[data-label="신규"] { background:#198754; }
   .tag-badge[data-label="소비자가"] { background:#7b4fc9; }
   .tag-badge[data-label="단가인상"] { background:#c62f3d; }
-  .notice-title-cell { font-weight:700; word-break:break-word; }
+  /* 창을 줄여도 제목이 좁게 줄바꿈되지 않도록 표에 최소 폭을 두고, 그보다 좁아지면 가로 스크롤이 생깁니다 */
+  .notice-table { min-width:900px; }
+  .notice-title-cell { font-weight:700; word-break:break-word; min-width:240px; }
   .notice-file-cell { font-size:12.5px; opacity:.75; word-break:break-all; }
   .btn.danger { color:#c62f3d; }
   .field-hint { font-size:12px; opacity:.65; margin-top:4px; }
@@ -50,7 +52,7 @@
           searchPlaceholder='공지 제목으로 검색',
           showKbdHint=false,
           showCategoryBtn=false,
-          avatarText=${#strings.isEmpty(companyName) ? '관' : #strings.substring(companyName, 0, 1)},
+          avatarText=${avatarText},
           companyName=${companyName},
           showExport=false,
           showCalcBtn=false,
@@ -71,7 +73,7 @@
           </div>
         </div>
         <div style="overflow-x:auto;">
-          <table>
+          <table class="notice-table">
             <thead>
               <tr>
                 <th style="width:110px">구분</th>
@@ -177,7 +179,9 @@
   function renderList() {
     var keyword = (($('topbarSearchInput') || {}).value || '').trim().toLowerCase();
     var rows = notices.filter(function (n) {
-      return !keyword || (n.title || '').toLowerCase().indexOf(keyword) !== -1;
+      if (!keyword) return true;
+      if (window.SearchUtils) return SearchUtils.matches(keyword, [n.title]);   // 띄어쓰기 AND 검색
+      return (n.title || '').toLowerCase().indexOf(keyword) !== -1;
     });
 
     $('noticeCount').textContent = rows.length + '건';

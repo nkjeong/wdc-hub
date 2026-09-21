@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 회원정보</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<style>
+  .mp-wrap{ max-width:820px; display:flex; flex-direction:column; gap:18px; }
+  .mp-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; }
+  .mp-full{ grid-column:1 / -1; }
+  .mp-field label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; }
+  .mp-req{ color:var(--red); }
+  .mp-opt{ color:var(--text-faint); font-weight:400; margin-left:4px; }
+  .mp-input, .mp-select{
+    width:100%; background:var(--bg-raise); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font-family:inherit; font-size:13px; padding:10px 12px; box-sizing:border-box; }
+  .mp-input:focus, .mp-select:focus{ outline:none; border-color:var(--gold); }
+  .mp-input[readonly]{ color:var(--text-dim); background:var(--surface-2); }
+  .mp-select option{ color:#111; background:#fff; }
+  .mp-hint{ font-size:11.5px; color:var(--text-faint); margin-top:5px; line-height:1.5; }
+  .mp-actions{ display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:6px; }
+  .mp-msg{ font-size:12.5px; flex:1; }
+  .mp-msg.ok{ color:var(--green); } .mp-msg.err{ color:var(--red); }
+  .mp-actions .btn{ padding:9px 22px; } .mp-actions .btn:disabled{ opacity:.5; cursor:default; }
+
+  .mp-info{ display:grid; grid-template-columns:120px 1fr; gap:10px 14px; font-size:13px; }
+  .mp-info dt{ color:var(--text-faint); font-weight:600; }
+  .mp-info dd{ margin:0; word-break:break-word; }
+  .mp-pill{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--text-dim); }
+  .mp-pill.g{ background:rgba(52,201,126,.12); color:var(--green); }
+  .mp-pill.a{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .mp-pill.r{ background:rgba(240,97,91,.12); color:var(--red); }
+  .mp-pill.grade{ background:rgba(212,166,42,.14); color:var(--gold); }
+
+  .mp-addr{ display:flex; gap:8px; }
+  .mp-addr .mp-input{ flex:1; }
+  .mp-addr-stack{ display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+
+  .mp-mk-rows{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+  .mp-mk-row{ display:flex; gap:8px; align-items:stretch; }
+  .mp-mk-row .mk-site{ flex:0 0 190px; }
+  .mp-mk-row .mk-id{ flex:1; min-width:0; }
+  .mp-add:disabled{ opacity:.45; cursor:default; }
+  @media (max-width:640px){ .mp-grid{ grid-template-columns:1fr; } .mp-info{ grid-template-columns:100px 1fr; }
+    .mp-mk-row{ flex-wrap:wrap; } .mp-mk-row .mk-site{ flex:1 1 100%; } }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='mypage')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">회원정보<span>내 정보를 확인하고 수정할 수 있어요</span></div>
+      </div>
+
+      <div class="mp-wrap">
+
+        <!-- 1) 내 계정 상태 (조회만) -->
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">내 계정</div></div>
+          <div class="panel-body">
+            <dl class="mp-info">
+              <dt>아이디</dt><dd th:text="${profile.loginId}"></dd>
+              <dt>회원 등급</dt>
+              <dd>
+                <span class="mp-pill grade" th:text="${profile.grade}">NORMAL</span>
+                <div class="mp-hint">등급에 따라 볼 수 있는 공급가가 달라져요. 등급 변경은 관리자가 해요.</div>
+              </dd>
+              <dt>승인 상태</dt>
+              <dd>
+                <span class="mp-pill" th:classappend="${profile.statusLabel == '승인 완료'} ? 'g' : (${profile.statusLabel == '승인 대기'} ? 'a' : 'r')"
+                      th:text="${profile.statusLabel}">승인 완료</span>
+                <span class="mp-hint" th:if="${profile.approvedAt != null}" style="margin-left:8px;"
+                      th:text="${#temporals.format(profile.approvedAt, 'yyyy-MM-dd')} + ' 승인'"></span>
+              </dd>
+              <dt th:if="${profile.memberCode != null}">회원 코드</dt>
+              <dd th:if="${profile.memberCode != null}" th:text="${profile.memberCode}" style="font-family:var(--mono);"></dd>
+              <dt>사업자등록번호</dt>
+              <dd>
+                <span th:text="${profile.businessRegistrationNumber}"></span>
+                <div class="mp-hint">사업자등록번호와 사업자등록증은 직접 바꿀 수 없어요. 변경이 필요하면 1:1 문의로 알려 주세요.</div>
+              </dd>
+            </dl>
+          </div>
+        </div>
+
+        <!-- 2) 기본정보 -->
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">기본정보</div></div>
+          <div class="panel-body">
+            <div class="mp-grid">
+              <div class="mp-field">
+                <label for="bName">담당자 이름 <span class="mp-req">*</span></label>
+                <input type="text" id="bName" class="mp-input" maxlength="50" th:value="${profile.name}">
+              </div>
+              <div class="mp-field">
+                <label for="bPhone">휴대폰 번호 <span class="mp-req">*</span></label>
+                <input type="tel" id="bPhone" class="mp-input" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" th:value="${profile.phoneNumber}">
+              </div>
+              <div class="mp-field mp-full">
+                <label for="bEmail">이메일 <span class="mp-req">*</span></label>
+                <input type="email" id="bEmail" class="mp-input" maxlength="100" th:value="${profile.email}">
+                <div class="mp-hint">이메일과 휴대폰 번호는 알림(카카오톡 알림톡, 벨 알림)에 쓰여요. 정확하게 입력해 주세요. 번호 인증 기능은 준비 중이에요.</div>
+              </div>
+            </div>
+            <div class="mp-actions">
+              <span class="mp-msg" id="basicMsg" role="status"></span>
+              <button type="button" class="btn gold" id="basicSave">기본정보 저장</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3) 비밀번호 변경 -->
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">비밀번호 변경</div></div>
+          <div class="panel-body">
+            <div class="mp-grid">
+              <div class="mp-field mp-full">
+                <label for="pwCurrent">현재 비밀번호</label>
+                <input type="password" id="pwCurrent" class="mp-input" autocomplete="current-password">
+              </div>
+              <div class="mp-field">
+                <label for="pwNew">새 비밀번호</label>
+                <input type="password" id="pwNew" class="mp-input" autocomplete="new-password" placeholder="영문, 숫자, 특수문자 조합 8자 이상">
+              </div>
+              <div class="mp-field">
+                <label for="pwConfirm">새 비밀번호 확인</label>
+                <input type="password" id="pwConfirm" class="mp-input" autocomplete="new-password">
+              </div>
+            </div>
+            <div class="mp-actions">
+              <span class="mp-msg" id="pwMsg" role="status"></span>
+              <button type="button" class="btn gold" id="pwSave">비밀번호 변경</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4) 사업자 정보 -->
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">사업자 정보</div></div>
+          <div class="panel-body">
+            <div class="mp-grid">
+              <div class="mp-field">
+                <label for="cName">상호명 <span class="mp-req">*</span></label>
+                <input type="text" id="cName" class="mp-input" maxlength="100" th:value="${profile.companyName}">
+              </div>
+              <div class="mp-field">
+                <label for="cCeo">대표자명 <span class="mp-req">*</span></label>
+                <input type="text" id="cCeo" class="mp-input" maxlength="50" th:value="${profile.ceoName}">
+              </div>
+              <div class="mp-field">
+                <label for="cType">업태 <span class="mp-opt">(선택)</span></label>
+                <input type="text" id="cType" class="mp-input" maxlength="50" placeholder="예: 도소매" th:value="${profile.businessType}">
+              </div>
+              <div class="mp-field">
+                <label for="cCategory">종목 <span class="mp-opt">(선택)</span></label>
+                <input type="text" id="cCategory" class="mp-input" maxlength="50" placeholder="예: 전자상거래" th:value="${profile.businessCategory}">
+              </div>
+
+              <div class="mp-field mp-full">
+                <label>사업장 주소 <span class="mp-opt">(선택)</span></label>
+                <div class="mp-addr">
+                  <input type="text" id="cZone" class="mp-input" style="max-width:160px;" placeholder="우편번호" readonly th:value="${profile.zonecode}">
+                  <button type="button" class="btn" id="cFindAddr">주소찾기</button>
+                </div>
+                <div class="mp-addr-stack">
+                  <input type="text" id="cAddr" class="mp-input" placeholder="주소찾기를 눌러 주소를 검색하세요" readonly th:value="${profile.companyAddress}">
+                  <input type="text" id="cAddrDetail" class="mp-input" maxlength="100" placeholder="상세주소 (동/호수 등)" th:value="${profile.addressDetail}">
+                </div>
+              </div>
+
+              <div class="mp-field">
+                <label for="cPhone">회사 대표번호 <span class="mp-opt">(선택)</span></label>
+                <input type="tel" id="cPhone" class="mp-input" inputmode="numeric" maxlength="13" placeholder="02-1234-5678" th:value="${profile.companyPhone}">
+              </div>
+              <div class="mp-field">
+                <label for="cFax">팩스번호 <span class="mp-opt">(선택)</span></label>
+                <input type="tel" id="cFax" class="mp-input" inputmode="numeric" maxlength="13" placeholder="02-1234-5678" th:value="${profile.companyFax}">
+              </div>
+            </div>
+            <div class="mp-hint" style="margin-top:12px;">상호명이나 대표자명을 바꾸면 관리자에게 변경 알림이 가요.</div>
+            <div class="mp-actions">
+              <span class="mp-msg" id="bizMsg" role="status"></span>
+              <button type="button" class="btn gold" id="bizSave">사업자 정보 저장</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5) 오픈마켓 아이디 -->
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">오픈마켓 판매자 아이디<span class="n">선택</span></div></div>
+          <div class="panel-body">
+            <div class="mp-hint" style="margin:0 0 10px;">판매 중인 오픈마켓 아이디를 적어 두시면 상품 등록 양식(엑셀)에 자동으로 넣어 드려요. 한 사이트에 여러 개여도 돼요. 줄을 지우고 저장하면 삭제돼요.</div>
+
+            <div class="mp-mk-rows" id="mkRows">
+              <div class="mp-mk-row" th:each="acc : ${marketAccounts}">
+                <div class="mk-site">
+                  <select class="mp-select" aria-label="오픈마켓 사이트">
+                    <option value="">사이트 선택</option>
+                    <option th:each="s : ${marketSites}" th:value="${s.name()}" th:text="${s.label}" th:selected="${acc.site == s}"></option>
+                  </select>
+                </div>
+                <div class="mk-id"><input type="text" class="mp-input" maxlength="50" placeholder="판매자 아이디" autocomplete="off" aria-label="오픈마켓 판매자 아이디" th:value="${acc.accountId}"></div>
+                <button type="button" class="btn mk-remove" aria-label="이 줄 삭제">삭제</button>
+              </div>
+            </div>
+
+            <!-- 새 줄을 만들 때 복사해서 쓰는 빈 줄 -->
+            <template id="mkTemplate">
+              <div class="mp-mk-row">
+                <div class="mk-site">
+                  <select class="mp-select" aria-label="오픈마켓 사이트">
+                    <option value="">사이트 선택</option>
+                    <option th:each="s : ${marketSites}" th:value="${s.name()}" th:text="${s.label}"></option>
+                  </select>
+                </div>
+                <div class="mk-id"><input type="text" class="mp-input" maxlength="50" placeholder="판매자 아이디" autocomplete="off" aria-label="오픈마켓 판매자 아이디"></div>
+                <button type="button" class="btn mk-remove" aria-label="이 줄 삭제">삭제</button>
+              </div>
+            </template>
+
+            <button type="button" class="btn mp-add" id="mkAdd">+ 아이디 추가</button>
+            <div class="mp-hint">영문, 숫자, . _ - @ 만 입력할 수 있어요. (최대 30개)</div>
+            <div class="mp-actions">
+              <span class="mp-msg" id="mkMsg" role="status"></span>
+              <button type="button" class="btn gold" id="mkSave">오픈마켓 아이디 저장</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script>
+(function () {
+  'use strict';
+
+  var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content;
+  var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content;
+  var $ = function (id) { return document.getElementById(id); };
+  var val = function (id) { return $(id).value.trim(); };
+
+  // ── 공통: JSON 전송 + 메시지 표시 ─────────────
+  async function post(url, body) {
+    var headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+    var res = await fetch(url, { method: 'POST', headers: headers, credentials: 'same-origin', body: JSON.stringify(body) });
+    if (!res.ok) {
+      var msg = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+      try { var t = await res.text(); if (t && t.length < 300) msg = t; } catch (e) { /* ignore */ }
+      throw new Error(msg);
+    }
+    var text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  function show(msgId, text, ok) {
+    var el = $(msgId);
+    el.textContent = text;
+    el.className = 'mp-msg ' + (ok ? 'ok' : 'err');
+  }
+
+  async function run(btnId, msgId, task, okText) {
+    var btn = $(btnId);
+    btn.disabled = true;
+    show(msgId, '저장하는 중...', true);
+    try {
+      await task();
+      show(msgId, okText, true);
+    } catch (e) {
+      show(msgId, e.message, false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // 숫자만 뽑아 하이픈을 붙입니다 (서버의 formatPhone과 같은 규칙)
+  function formatPhone(raw) {
+    var d = String(raw || '').replace(/[^0-9]/g, '');
+    if (d.indexOf('02') === 0) {
+      if (d.length === 9) return d.slice(0, 2) + '-' + d.slice(2, 5) + '-' + d.slice(5);
+      if (d.length >= 10) return d.slice(0, 2) + '-' + d.slice(2, 6) + '-' + d.slice(6, 10);
+      return d;
+    }
+    if (d.length >= 11) return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7, 11);
+    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    if (d.length === 8) return d.slice(0, 4) + '-' + d.slice(4);
+    return d;
+  }
+  ['bPhone', 'cPhone', 'cFax'].forEach(function (id) {
+    $(id).addEventListener('blur', function () { $(id).value = formatPhone($(id).value); });
+  });
+
+  // ── 기본정보 ────────────────────────────
+  $('basicSave').addEventListener('click', function () {
+    run('basicSave', 'basicMsg', async function () {
+      var p = await post('/mypage/basic', { name: val('bName'), email: val('bEmail'), phoneNumber: formatPhone(val('bPhone')) });
+      $('bName').value = p.name || ''; $('bEmail').value = p.email || ''; $('bPhone').value = p.phoneNumber || '';
+    }, '저장했어요.');
+  });
+
+  // ── 비밀번호 ────────────────────────────
+  $('pwSave').addEventListener('click', function () {
+    run('pwSave', 'pwMsg', async function () {
+      await post('/mypage/password', { currentPassword: $('pwCurrent').value, newPassword: $('pwNew').value, newPasswordConfirm: $('pwConfirm').value });
+      $('pwCurrent').value = ''; $('pwNew').value = ''; $('pwConfirm').value = '';
+    }, '비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 사용하세요.');
+  });
+
+  // ── 사업자 정보 ─────────────────────────
+  $('cFindAddr').addEventListener('click', function () {
+    if (!window.kakao || !kakao.Postcode) { alert('주소 검색을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
+    new kakao.Postcode({
+      oncomplete: function (data) {
+        $('cZone').value = data.zonecode;
+        $('cAddr').value = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+        $('cAddrDetail').focus();
+      }
+    }).open();
+  });
+
+  $('bizSave').addEventListener('click', function () {
+    run('bizSave', 'bizMsg', async function () {
+      var p = await post('/mypage/business', {
+        companyName: val('cName'), ceoName: val('cCeo'), businessType: val('cType'), businessCategory: val('cCategory'),
+        zonecode: val('cZone'), companyAddress: val('cAddr'), addressDetail: val('cAddrDetail'),
+        companyPhone: formatPhone(val('cPhone')), companyFax: formatPhone(val('cFax'))
+      });
+      $('cPhone').value = p.companyPhone || ''; $('cFax').value = p.companyFax || '';
+      // 상단바의 회사명도 바로 바꿔 줍니다
+      var top = document.querySelector('.user-company');
+      if (top) top.textContent = p.companyName;
+    }, '저장했어요.');
+  });
+
+  // ── 오픈마켓 아이디 ─────────────────────
+  var MAX_ROWS = 30;
+  var rowsBox = $('mkRows');
+  var addBtn = $('mkAdd');
+  var rows = function () { return Array.prototype.slice.call(rowsBox.querySelectorAll('.mp-mk-row')); };
+  var siteOf = function (r) { return r.querySelector('select'); };
+  var idOf = function (r) { return r.querySelector('input[type="text"]'); };
+
+  function refreshAdd() { addBtn.disabled = rows().length >= MAX_ROWS; }
+  function addRow() {
+    if (rows().length >= MAX_ROWS) return;
+    var node = $('mkTemplate').content.firstElementChild.cloneNode(true);
+    rowsBox.appendChild(node);
+    refreshAdd();
+    return node;
+  }
+  addBtn.addEventListener('click', function () { var n = addRow(); if (n) siteOf(n).focus(); });
+
+  rowsBox.addEventListener('click', function (e) {
+    var btn = e.target.closest('.mk-remove');
+    if (!btn) return;
+    var row = btn.closest('.mp-mk-row');
+    if (rows().length <= 1) { siteOf(row).value = ''; idOf(row).value = ''; return; } // 마지막 한 줄은 비우기만
+    row.remove();
+    refreshAdd();
+  });
+
+  rowsBox.addEventListener('input', function (e) {
+    if (e.target.matches('input[type="text"]')) e.target.value = e.target.value.replace(/[^A-Za-z0-9._@-]/g, '');
+  });
+
+  if (rows().length === 0) addRow(); // 저장된 아이디가 없으면 빈 줄 1개
+  refreshAdd();
+
+  $('mkSave').addEventListener('click', function () {
+    var bad = rows().find(function (r) { return idOf(r).value.trim() && !siteOf(r).value; });
+    if (bad) { show('mkMsg', '아이디를 입력한 줄은 사이트를 선택해 주세요.', false); siteOf(bad).focus(); return; }
+
+    run('mkSave', 'mkMsg', async function () {
+      var list = rows().map(function (r) { return { site: siteOf(r).value || null, accountId: idOf(r).value.trim() }; })
+                       .filter(function (a) { return a.accountId; });
+      var saved = await post('/mypage/market-accounts', list);
+      // 저장된 내용으로 줄을 다시 그립니다 (비어 있던 줄/중복은 정리됨)
+      rowsBox.innerHTML = '';
+      (saved || []).forEach(function (a) {
+        var n = addRow();
+        siteOf(n).value = a.site; idOf(n).value = a.accountId;
+      });
+      if (rows().length === 0) addRow();
+      refreshAdd();
+    }, '저장했어요.');
+  });
+})();
+</script>
+</body>
+</html>

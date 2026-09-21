@@ -63,6 +63,10 @@ public class ProductRequest {
     @Column(name = "requester_company", length = 200)
     private String requesterCompany;
 
+    /** 처리 결과를 카카오톡 알림톡으로 알릴 때 쓰는 요청 당시의 휴대폰 번호 */
+    @Column(name = "requester_phone", length = 30)
+    private String requesterPhone;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

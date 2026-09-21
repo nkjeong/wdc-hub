@@ -44,7 +44,8 @@ public class ProductRequestController {
     public Response create(@RequestBody CreateRequest req,
                            @AuthenticationPrincipal CustomUserDetails userDetails) {
         return productRequestService.createModifyRequest(
-                req, userDetails.getUsername(), userDetails.getMember().getCompanyName());
+                req, userDetails.getUsername(), userDetails.getMember().getCompanyName(),
+                userDetails.getMember().getPhoneNumber());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

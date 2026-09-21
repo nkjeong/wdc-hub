@@ -210,6 +210,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
             이 상품 다운로드
           </button>
+        ${window.GmarketExport ? GmarketExport.buttonHtml() : ''}
         <button type="button" class="pd-request-btn" data-pd-request
                 data-product-id="${raw.id}"
                 data-product-name="${encodeURIComponent(raw.productName || '')}"
@@ -238,6 +239,13 @@
     document.getElementById('pdDownloadBtn').addEventListener('click', () => {
       downloadSingleProductExcel(raw);
     });
+
+    const gmBtn = document.getElementById('pdGmarketBtn');
+    if (gmBtn && window.GmarketExport) {
+      gmBtn.addEventListener('click', () => {
+        GmarketExport.download([raw], sanitizeFileName(raw.productName || '상품'));
+      });
+    }
 
     const offcanvasEl = document.getElementById('productDetailOffcanvas');
     bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();

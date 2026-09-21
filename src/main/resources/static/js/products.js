@@ -158,6 +158,7 @@ function resetCategorySelection(prefix) {
 async function loadBrandOptions(selectEl) {
   try {
     const list = await fetchJSON(BRAND_API);
+    if (window.BrandPicker) BrandPicker.setDetails(list);   // 브랜드 검색 레이어가 영문명/제조사/수입사로도 찾을 수 있게
     list.forEach((b) => addOption(selectEl, b.id, b.brandNameKr));
   } catch (e) { /* 브랜드 못 불러와도 상품관리 자체는 계속 쓸 수 있어야 함 */ }
 }
@@ -343,6 +344,7 @@ function collectPayload(prefix) {
     category3Id: numOrNull(`${prefix}Category3`),
     brandId: numOrNull(`${prefix}Brand`),
     countryOfOrigin: strOrNull(`${prefix}CountryOfOrigin`),
+    ...EsmPicker.collect(prefix), // G마켓 카테고리/원산지 (esmCategoryCode, gmarketCategoryCode, originProductType, originCode)
     certification: getCertificationValue(prefix),
     sellerPrice1: numOrNull(`${prefix}SellerPrice1`),
     sellerPrice2: numOrNull(`${prefix}SellerPrice2`),
@@ -444,12 +446,14 @@ const productPaginationEl = document.getElementById('productPagination');
 
 function getFilteredProducts() {
   if (!searchQuery) return allProducts;
+  // 띄어쓰기로 나눈 모든 단어가 (상품명/바코드/품번 중) 들어 있는 상품만 (AND 검색)
+  const match = window.SearchUtils ? SearchUtils.matcher(searchQuery) : null;
   const q = searchQuery.toLowerCase();
-  return allProducts.filter((p) =>
-    (p.productName && p.productName.toLowerCase().includes(q)) ||
-    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
-    (p.productNumber && p.productNumber.toLowerCase().includes(q))
-  );
+  return allProducts.filter((p) => match
+    ? match([p.productName, p.barcode, p.productNumber])
+    : ((p.productName && p.productName.toLowerCase().includes(q)) ||
+       (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+       (p.productNumber && p.productNumber.toLowerCase().includes(q))));
 }
 
 function renderTable() {
@@ -570,6 +574,7 @@ async function copyToRegisterForm(p) {
   fillOptionUI('reg', p);
 
   await setCategorySelection('reg', p.category1Id, p.category2Id, p.category3Id);
+  await EsmPicker.set('reg', p); // G마켓 카테고리/원산지도 함께 복사
 
   // 바코드는 원본과 완전히 같은 값으로 복사돼서 그대로 두면 중복이에요.
   // 등록확인을 다시 눌러야 하는 상태(미확인)로 남겨둬서, 등록 전에 반드시 새 바코드로 바꾸도록 유도합니다.
@@ -641,6 +646,7 @@ function resetRegisterForm() {
   document.getElementById('registerForm').reset(); // file input도 함께 비워집니다 (라디오는 해당사항없음으로 되돌아감)
   syncCertVisibility('reg');
   resetCategorySelection('reg');
+  EsmPicker.reset('reg');
   showMainImagePreview('reg', null);
   showDetailImagePreview('reg', [], '선택한 이미지가 여기에 미리보기로 표시돼요');
   resetOptionUI('reg');
@@ -659,6 +665,12 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
   if (regBarcodeCheckedValue !== barcode) {
     alert('먼저 "등록확인" 버튼으로 이미 등록된 바코드가 아닌지 확인해주세요.');
     document.getElementById('regBarcodeCheckBtn').focus();
+    return;
+  }
+
+  const esmError = EsmPicker.validate('reg');
+  if (esmError) {
+    alert(esmError);
     return;
   }
 
@@ -714,6 +726,7 @@ async function openEditOffcanvas(p) {
   hideProgress('edit');
 
   await setCategorySelection('edit', p.category1Id, p.category2Id, p.category3Id);
+  await EsmPicker.set('edit', p); // 저장된 G마켓 카테고리/원산지 표시
 
   const offcanvasEl = document.getElementById('productEditOffcanvas');
   bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
@@ -726,6 +739,12 @@ document.getElementById('btnSaveEdit').addEventListener('click', async () => {
   const productName = document.getElementById('editProductName').value.trim();
   if (!productName) {
     alert('상품명을 입력해주세요.');
+    return;
+  }
+
+  const esmError = EsmPicker.validate('edit');
+  if (esmError) {
+    alert(esmError);
     return;
   }
 
@@ -1177,7 +1196,10 @@ function renderCardAd1SearchResults(query) {
 
   const q = query.toLowerCase();
   const selectedIds = new Set(cardAd1Selected.map((p) => p.id));
-  const matches = allProducts.filter((p) => p.productName && p.productName.toLowerCase().includes(q)).slice(0, 20);
+  const cardMatch = window.SearchUtils ? SearchUtils.matcher(query) : null;   // 띄어쓰기 AND 검색
+  const matches = allProducts
+    .filter((p) => p.productName && (cardMatch ? cardMatch([p.productName]) : p.productName.toLowerCase().includes(q)))
+    .slice(0, 20);
 
   if (matches.length === 0) {
     resultsEl.innerHTML = '<div class="cardad-selected-empty">검색 결과가 없어요.</div>';

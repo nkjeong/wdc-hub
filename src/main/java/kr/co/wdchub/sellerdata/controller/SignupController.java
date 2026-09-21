@@ -1,7 +1,10 @@
 package kr.co.wdchub.sellerdata.controller;
 
 import jakarta.validation.Valid;
+import kr.co.wdchub.sellerdata.domain.MarketSite;
+import kr.co.wdchub.sellerdata.dto.MarketAccountInput;
 import kr.co.wdchub.sellerdata.dto.SignupForm;
+import kr.co.wdchub.sellerdata.service.MarketAccountService;
 import kr.co.wdchub.sellerdata.service.MemberService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,14 +17,24 @@ import org.springframework.web.bind.annotation.PostMapping;
 public class SignupController {
 
     private final MemberService memberService;
+    private final MarketAccountService marketAccountService;
 
-    public SignupController(MemberService memberService) {
+    public SignupController(MemberService memberService, MarketAccountService marketAccountService) {
         this.memberService = memberService;
+        this.marketAccountService = marketAccountService;
+    }
+
+    /** 가입 화면의 "오픈마켓 아이디" 사이트 드롭다운에 쓰는 목록 */
+    @ModelAttribute("marketSites")
+    public MarketSite[] marketSites() {
+        return MarketSite.values();
     }
 
     @GetMapping("/signup")
     public String signupForm(Model model) {
-        model.addAttribute("signupForm", new SignupForm());
+        SignupForm form = new SignupForm();
+        form.getMarketAccounts().add(new MarketAccountInput()); // 오픈마켓 아이디 입력줄 1개는 기본으로 보여줍니다
+        model.addAttribute("signupForm", form);
         return "signup";
     }
 
@@ -56,7 +69,15 @@ public class SignupController {
             bindingResult.rejectValue("businessRegistrationNumber", "duplicate", "이미 등록된 사업자등록번호입니다.");
         }
 
+        // 오픈마켓 아이디(선택): 적은 줄이 있으면 형식을 검사합니다. 전부 비어 있으면 그냥 통과.
+        try {
+            marketAccountService.validate(form.getMarketAccounts());
+        } catch (IllegalArgumentException e) {
+            bindingResult.rejectValue("marketAccounts", "invalid", e.getMessage());
+        }
+
         if (bindingResult.hasErrors()) {
+            ensureOneMarketRow(form);
             return "signup";
         }
 
@@ -65,14 +86,23 @@ public class SignupController {
         } catch (IllegalArgumentException e) {
             // 파일 형식/크기 검증 실패 (FileStorageService에서 던짐)
             bindingResult.rejectValue("businessLicenseFile", "invalid", e.getMessage());
+            ensureOneMarketRow(form);
             return "signup";
         } catch (IllegalStateException e) {
             // 파일 저장 중 서버 오류
             bindingResult.reject("fileError", e.getMessage());
+            ensureOneMarketRow(form);
             return "signup";
         }
 
         return "redirect:/signup/complete";
+    }
+
+    /** 화면을 다시 그릴 때 오픈마켓 아이디 입력줄이 하나도 없으면 빈 줄 1개를 넣어 둡니다. */
+    private void ensureOneMarketRow(SignupForm form) {
+        if (form.getMarketAccounts() == null || form.getMarketAccounts().isEmpty()) {
+            form.getMarketAccounts().add(new MarketAccountInput());
+        }
     }
 
     @GetMapping("/signup/complete")

@@ -7,6 +7,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" th:href="@{/css/signup.css}">
+<style>
+  /* 오픈마켓 아이디 입력줄 (이 화면 전용). 입력칸 모양은 기존 .field-input 스타일을 그대로 씁니다. */
+  .mk-rows{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+  .mk-row{ display:flex; gap:8px; align-items:stretch; }
+  .mk-site{ flex:0 0 170px; }
+  .mk-id{ flex:1; min-width:0; }
+  .mk-site select{ width:100%; height:100%; min-height:22px; background:transparent; border:0; outline:none; color:inherit; font:inherit; padding:0; cursor:pointer; }
+  .mk-site select option{ color:#111; background:#fff; }
+  .mk-remove{ flex:0 0 auto; }
+  .mk-add:disabled{ opacity:.45; cursor:default; }
+  @media (max-width:560px){ .mk-row{ flex-wrap:wrap; } .mk-site{ flex:1 1 100%; } }
+</style>
 </head>
 <body>
 
@@ -186,6 +198,35 @@
           <div class="field-error" th:if="${#fields.hasErrors('businessLicenseFile')}" th:errors="*{businessLicenseFile}"></div>
           <div class="hint">JPG, PNG, PDF 파일만 업로드할 수 있어요. (10MB 이하)</div>
           <div class="hint" id="fileUploadHint"></div>
+        </div>
+      </div>
+
+      <div class="section-title">오픈마켓 정보<span class="opt">(선택)</span></div>
+      <div class="grid2">
+        <div class="field full">
+          <label>오픈마켓 판매자 아이디<span class="opt">(선택)</span></label>
+          <div class="hint" style="margin-bottom:8px;">판매 중인 오픈마켓 아이디를 적어 두시면 상품 등록 양식(엑셀)에 자동으로 넣어 드려요. 한 사이트에 아이디가 여러 개면 줄을 추가해서 적어 주세요. 입력하지 않아도 가입할 수 있어요.</div>
+
+          <div class="mk-rows" id="marketRows">
+            <!-- 입력줄: 처음에는 1개가 보이고, '+ 아이디 추가'로 늘립니다. 가입 검증에 실패해서 화면이 다시 그려져도 적었던 줄이 그대로 남아요. -->
+            <div class="mk-row" th:each="acc, st : *{marketAccounts}">
+              <div class="field-input mk-site">
+                <select th:field="*{marketAccounts[__${st.index}__].site}" aria-label="오픈마켓 사이트">
+                  <option value="">사이트 선택</option>
+                  <option th:each="s : ${marketSites}" th:value="${s.name()}" th:text="${s.label}"></option>
+                </select>
+              </div>
+              <div class="field-input mk-id">
+                <input type="text" th:field="*{marketAccounts[__${st.index}__].accountId}" placeholder="판매자 아이디" maxlength="50" autocomplete="off" aria-label="오픈마켓 판매자 아이디">
+              </div>
+              <button type="button" class="btn-inline mk-remove" aria-label="이 줄 삭제">삭제</button>
+            </div>
+          </div>
+
+          <button type="button" class="btn-inline mk-add" id="btnAddMarket">+ 아이디 추가</button>
+          <div class="field-error" th:if="${#fields.hasErrors('marketAccounts')}" th:errors="*{marketAccounts}"></div>
+          <div class="hint err" id="marketError" style="display:none;"></div>
+          <div class="hint">영문, 숫자, . _ - @ 만 입력할 수 있어요. (최대 30개)</div>
         </div>
       </div>
 

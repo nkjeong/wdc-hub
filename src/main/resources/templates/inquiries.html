@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 1:1 문의</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<style>
+  .iq-field{ margin-bottom:14px; }
+  .iq-field label{ display:block; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:6px; }
+  .iq-req{ color:var(--red); }
+  .iq-input, .iq-textarea, .iq-select, .iq-file{
+    width:100%; background:var(--bg-raise); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font-family:inherit; font-size:13px; padding:10px 12px; box-sizing:border-box; }
+  .iq-textarea{ min-height:170px; resize:vertical; line-height:1.6; }
+  .iq-input:focus, .iq-textarea:focus, .iq-select:focus{ outline:none; border-color:var(--gold); }
+  .iq-row{ display:grid; grid-template-columns:200px 1fr; gap:14px; }
+  .iq-hint{ font-size:11.5px; color:var(--text-faint); margin-top:5px; }
+  .iq-count{ text-align:right; font-size:11px; color:var(--text-faint); font-family:var(--mono); margin-top:4px; }
+  .iq-files{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+  .iq-file-row{ display:flex; gap:10px; padding:6px 10px; border-radius:8px; border:1px solid var(--line-soft); background:var(--surface-2); font-size:12.5px; }
+  .iq-file-row .n{ flex:1; word-break:break-all; }
+  .iq-file-row .s{ font-family:var(--mono); color:var(--text-dim); flex-shrink:0; }
+  .iq-progress{ display:none; margin:6px 0 14px; }
+  .iq-track{ height:10px; border-radius:6px; background:rgba(128,128,128,.25); overflow:hidden; }
+  .iq-bar{ height:100%; width:0%; background:var(--gold); transition:width .15s linear; }
+  .iq-bar.done{ background:var(--green); } .iq-bar.fail{ background:var(--red); }
+  .iq-ptext{ font-size:12.5px; color:var(--text-dim); margin-top:6px; }
+  .iq-error{ display:none; margin-bottom:12px; padding:9px 12px; border-radius:6px; background:rgba(240,97,91,.12); color:var(--red); font-size:13px; }
+  .iq-actions{ display:flex; justify-content:flex-end; gap:8px; }
+  .iq-actions .btn{ padding:9px 22px; }
+  .iq-actions .btn:disabled{ opacity:.5; }
+
+  .iq-list{ display:flex; flex-direction:column; gap:10px; }
+  details.iq-item{ border:1px solid var(--line); border-radius:8px; }
+  details.iq-item[open]{ border-color:var(--gold-dim); }
+  details.iq-item > summary{ list-style:none; cursor:pointer; padding:13px 16px; display:flex; align-items:center; gap:10px; border-radius:8px; }
+  details.iq-item > summary::-webkit-details-marker{ display:none; }
+  details.iq-item > summary:hover{ background:var(--surface-2); }
+  details.iq-item > summary:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+  .iq-cat{ font-size:11.5px; color:var(--text-dim); border:1px solid var(--line); border-radius:4px; padding:1px 7px; flex-shrink:0; }
+  .iq-title{ flex:1; min-width:0; font-weight:700; word-break:break-word; }
+  .iq-date{ font-size:12px; color:var(--text-faint); font-family:var(--mono); flex-shrink:0; }
+  .iq-pill{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; flex-shrink:0; background:var(--surface-2); color:var(--text-dim); }
+  .iq-pill.RECEIVED{ background:rgba(91,140,255,.12); color:var(--blue); }
+  .iq-pill.IN_PROGRESS{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .iq-pill.ANSWERED{ background:rgba(52,201,126,.12); color:var(--green); }
+  .iq-body{ padding:4px 18px 18px; border-top:1px solid var(--line-soft); }
+  .iq-text{ white-space:pre-wrap; word-break:break-word; line-height:1.7; padding-top:14px; }
+  .iq-att{ margin-top:12px; display:flex; flex-wrap:wrap; gap:8px; }
+  .iq-att a{ font-size:12.5px; padding:6px 12px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); }
+  .iq-att a:hover{ border-color:var(--gold); color:var(--gold); }
+  .iq-answer{ margin-top:16px; padding:12px 14px; border-radius:8px; border:1px solid var(--gold-dim); background:rgba(212,166,42,.08); }
+  .iq-answer b{ display:block; color:var(--gold); font-size:12px; margin-bottom:6px; }
+  .iq-answer .t{ white-space:pre-wrap; word-break:break-word; line-height:1.65; }
+  .iq-answer .d{ margin-top:8px; font-size:11.5px; color:var(--text-faint); font-family:var(--mono); }
+  .iq-wait{ margin-top:16px; font-size:12.5px; color:var(--text-faint); }
+  .iq-empty{ text-align:center; color:var(--text-faint); padding:32px 12px; font-size:13px; }
+  .iq-gap{ margin-top:18px; }
+  @media (max-width:640px){ .iq-row{ grid-template-columns:1fr; } .iq-date{ display:none; } }
+  @media (prefers-reduced-motion: reduce){ .iq-bar{ transition:none; } }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='inquiry')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">1:1 문의<span>궁금한 점을 남겨 주시면 관리자가 확인 후 답변해 드려요</span></div>
+      </div>
+
+      <!-- 문의 작성 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">문의하기</div>
+          <div class="panel-action">
+            <button type="button" class="btn gold" id="iqToggleForm">+ 문의 작성</button>
+          </div>
+        </div>
+        <div class="panel-body" id="iqFormWrap" style="display:none;">
+          <div class="iq-row">
+            <div class="iq-field">
+              <label for="iqCategory">분류</label>
+              <select id="iqCategory" class="iq-select">
+                <option value="PRODUCT">상품</option>
+                <option value="MEMBER">회원·등급</option>
+                <option value="SITE">사이트 이용</option>
+                <option value="ETC" selected>기타</option>
+              </select>
+            </div>
+            <div class="iq-field">
+              <label for="iqTitle">제목 <span class="iq-req">*</span></label>
+              <input type="text" id="iqTitle" class="iq-input" maxlength="200" placeholder="문의 제목을 입력하세요">
+            </div>
+          </div>
+
+          <div class="iq-field">
+            <label for="iqContent">내용 <span class="iq-req">*</span></label>
+            <textarea id="iqContent" class="iq-textarea" maxlength="4000" placeholder="문의하실 내용을 자세히 적어 주세요. 상품 문의라면 상품명이나 바코드를 함께 적어 주시면 더 빨리 확인할 수 있어요."></textarea>
+            <div class="iq-count"><span id="iqCount">0</span> / 4000</div>
+          </div>
+
+          <div class="iq-field">
+            <label for="iqFiles">첨부파일 <span style="font-weight:400; opacity:.7;">(선택, 최대 3개 · 개당 10MB)</span></label>
+            <input type="file" id="iqFiles" class="iq-file" multiple
+                   accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.hwp,.doc,.docx,.xls,.xlsx,.zip">
+            <div class="iq-hint">jpg, png, webp, gif, pdf, hwp, doc(x), xls(x), zip 파일을 올릴 수 있어요.</div>
+            <div class="iq-files" id="iqFileList"></div>
+          </div>
+
+          <div class="iq-progress" id="iqProgress" aria-live="polite">
+            <div class="iq-track"><div class="iq-bar" id="iqBar"></div></div>
+            <div class="iq-ptext" id="iqPText"></div>
+          </div>
+          <div class="iq-error" id="iqError" role="alert"></div>
+
+          <div class="iq-actions">
+            <button type="button" class="btn" id="iqCancel">취소</button>
+            <button type="button" class="btn gold" id="iqSubmit">문의 접수</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 내 문의 내역 -->
+      <div class="panel iq-gap">
+        <div class="panel-head">
+          <div class="panel-title">내 문의 내역<span class="n" id="iqMyCount">0건</span></div>
+        </div>
+        <div class="panel-body">
+          <div class="iq-list" id="iqList"><div class="iq-empty">불러오는 중...</div></div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+<script>
+(function () {
+  'use strict';
+
+  var MAX_FILES = 3;
+  var MAX_BYTES = 10 * 1024 * 1024;
+  var ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf', 'hwp', 'doc', 'docx', 'xls', 'xlsx', 'zip'];
+  var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content;
+  var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function ext(n) { var i = n.lastIndexOf('.'); return i < 0 ? '' : n.slice(i + 1).toLowerCase(); }
+  function mb(b) { return (b / 1024 / 1024).toFixed(1) + 'MB'; }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(v) {
+    if (!v) return '';
+    if (Array.isArray(v)) return v[0] + '-' + pad(v[1]) + '-' + pad(v[2]) + ' ' + pad(v[3] || 0) + ':' + pad(v[4] || 0);
+    return String(v).replace('T', ' ').slice(0, 16);
+  }
+
+  var files = [];
+  var uploading = false;
+
+  // ── 작성 폼 ─────────────────────────────
+  function showError(m) { var e = $('iqError'); e.textContent = m; e.style.display = 'block'; }
+  function clearError() { $('iqError').style.display = 'none'; }
+
+  function openForm() { $('iqFormWrap').style.display = ''; $('iqToggleForm').textContent = '작성 닫기'; $('iqTitle').focus(); }
+  function closeForm() {
+    if (uploading) return;
+    $('iqFormWrap').style.display = 'none';
+    $('iqToggleForm').textContent = '+ 문의 작성';
+  }
+  function resetForm() {
+    $('iqCategory').value = 'ETC'; $('iqTitle').value = ''; $('iqContent').value = '';
+    $('iqCount').textContent = '0'; $('iqFiles').value = ''; files = []; renderFiles();
+    clearError(); $('iqProgress').style.display = 'none'; $('iqBar').style.width = '0%'; $('iqBar').className = 'iq-bar';
+  }
+
+  function renderFiles() {
+    var box = $('iqFileList');
+    box.innerHTML = '';
+    files.forEach(function (f) {
+      var row = document.createElement('div');
+      row.className = 'iq-file-row';
+      row.innerHTML = '<span class="n">' + esc(f.name) + '</span><span class="s">' + mb(f.size) + '</span>';
+      box.appendChild(row);
+    });
+  }
+
+  $('iqFiles').addEventListener('change', function (e) {
+    var picked = Array.prototype.slice.call(e.target.files || []);
+    clearError();
+    if (picked.length > MAX_FILES) { showError('첨부파일은 최대 ' + MAX_FILES + '개까지 올릴 수 있어요.'); e.target.value = ''; files = []; renderFiles(); return; }
+    for (var i = 0; i < picked.length; i++) {
+      if (ALLOWED.indexOf(ext(picked[i].name)) < 0) { showError('올릴 수 없는 파일 형식이에요: ' + picked[i].name); e.target.value = ''; files = []; renderFiles(); return; }
+      if (picked[i].size > MAX_BYTES) { showError('첨부파일은 개당 10MB 이하만 올릴 수 있어요: ' + picked[i].name + ' (' + mb(picked[i].size) + ')'); e.target.value = ''; files = []; renderFiles(); return; }
+    }
+    files = picked; renderFiles();
+  });
+  $('iqContent').addEventListener('input', function () { $('iqCount').textContent = String($('iqContent').value.length); });
+  $('iqToggleForm').addEventListener('click', function () { $('iqFormWrap').style.display === 'none' ? openForm() : closeForm(); });
+  $('iqCancel').addEventListener('click', function () { if (!uploading) { resetForm(); closeForm(); } });
+
+  // ── 접수 (XHR: 첨부파일 업로드 진행률 표시) ──
+  function setBusy(b) {
+    uploading = b;
+    ['iqSubmit', 'iqCancel', 'iqCategory', 'iqTitle', 'iqContent', 'iqFiles'].forEach(function (id) { $(id).disabled = b; });
+  }
+
+  function submit() {
+    if (uploading) return;
+    clearError();
+    var title = $('iqTitle').value.trim();
+    var content = $('iqContent').value.trim();
+    if (!title) { showError('제목을 입력해 주세요.'); $('iqTitle').focus(); return; }
+    if (!content) { showError('문의 내용을 입력해 주세요.'); $('iqContent').focus(); return; }
+
+    var fd = new FormData();
+    fd.append('category', $('iqCategory').value);
+    fd.append('title', title);
+    fd.append('content', content);
+    files.forEach(function (f) { fd.append('files', f); });
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/inquiries');
+    if (csrfToken && csrfHeader) xhr.setRequestHeader(csrfHeader, csrfToken);
+
+    var bar = $('iqBar'), text = $('iqPText');
+    if (files.length) {
+      $('iqProgress').style.display = 'block';
+      text.textContent = '업로드 준비 중...';
+      xhr.upload.onprogress = function (e) {
+        if (!e.lengthComputable) return;
+        var pct = Math.round(e.loaded / e.total * 100);
+        bar.style.width = pct + '%';
+        text.textContent = pct >= 100 ? '서버로 전송 완료. 파일을 저장하는 중이에요...' : '업로드 중 ' + pct + '% (' + mb(e.loaded) + ' / ' + mb(e.total) + ')';
+      };
+    }
+    xhr.onload = function () {
+      setBusy(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resetForm(); closeForm(); loadList();
+        window.alert('문의가 접수됐어요.\n답변이 등록되면 알림으로 알려 드려요.');
+      } else {
+        bar.className = 'iq-bar fail';
+        var msg = (xhr.responseText || '').trim();
+        if (xhr.status === 413) msg = '파일이 너무 커요. 첨부파일을 줄여서 다시 시도해 주세요.';
+        showError(msg && msg.length < 300 ? msg : '문의를 접수하지 못했어요. (상태코드 ' + xhr.status + ')');
+      }
+    };
+    xhr.onerror = function () { setBusy(false); bar.className = 'iq-bar fail'; showError('서버와 통신하지 못했어요. 잠시 후 다시 시도해 주세요.'); };
+    setBusy(true);
+    xhr.send(fd);
+  }
+  $('iqSubmit').addEventListener('click', submit);
+  window.addEventListener('beforeunload', function (e) { if (uploading) { e.preventDefault(); e.returnValue = ''; } });
+
+  // ── 내 문의 내역 ────────────────────────
+  async function loadList() {
+    var box = $('iqList');
+    try {
+      var res = await fetch('/inquiries/list', { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error('fail');
+      var list = await res.json();
+      $('iqMyCount').textContent = list.length + '건';
+      if (!list.length) { box.innerHTML = '<div class="iq-empty">아직 접수한 문의가 없어요. 위의 \'+ 문의 작성\'으로 문의해 보세요.</div>'; return; }
+      box.innerHTML = '';
+      list.forEach(function (q) {
+        var d = document.createElement('details');
+        d.className = 'iq-item';
+        var att = (q.attachments || []).map(function (a) {
+          return '<a href="/inquiries/attachments/' + a.id + '/download">' + esc(a.fileName) + '</a>';
+        }).join('');
+        d.innerHTML =
+          '<summary>' +
+            '<span class="iq-pill ' + esc(q.status) + '">' + esc(q.statusLabel) + '</span>' +
+            '<span class="iq-cat">' + esc(q.categoryLabel) + '</span>' +
+            '<span class="iq-title">' + esc(q.title) + '</span>' +
+            '<span class="iq-date">' + esc(fmt(q.createdAt)) + '</span>' +
+          '</summary>' +
+          '<div class="iq-body">' +
+            '<div class="iq-text">' + esc(q.content) + '</div>' +
+            (att ? '<div class="iq-att">' + att + '</div>' : '') +
+            (q.answer
+              ? '<div class="iq-answer"><b>관리자 답변</b><div class="t">' + esc(q.answer) + '</div><div class="d">' + esc(fmt(q.answeredAt)) + '</div></div>'
+              : '<div class="iq-wait">아직 답변이 등록되지 않았어요. 확인하는 대로 답변드릴게요.</div>') +
+          '</div>';
+        box.appendChild(d);
+      });
+    } catch (e) {
+      box.innerHTML = '<div class="iq-empty">문의 내역을 불러오지 못했어요. 새로고침해 주세요.</div>';
+    }
+  }
+
+  loadList();
+})();
+</script>
+</body>
+</html>

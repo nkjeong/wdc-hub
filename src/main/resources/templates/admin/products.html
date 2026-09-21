@@ -141,10 +141,39 @@
               <div class="calc-field"><label>2차 카테고리</label><select id="regCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
               <div class="calc-field"><label>3차 카테고리</label><select id="regCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
             </div>
+            <div class="esm-block" id="regEsmBlock">
+              <div class="esm-block-title">G마켓 등록 정보<span class="opt">(선택)</span></div>
+
+              <div class="calc-field">
+                <label>G마켓 카테고리</label>
+                <div class="esm-levels"></div>
+                <div class="esm-search">
+                  <input type="text" class="calc-input esm-search-input" placeholder="이름으로 검색해서 바로 선택 (예: 텀블러, 사과)" autocomplete="off">
+                  <div class="esm-results" style="display:none;"></div>
+                </div>
+                <div class="esm-selected"></div>
+                <div class="esm-site-wrap" style="display:none;"><select class="calc-input esm-site"></select></div>
+                <div class="esm-site-note hint-text"></div>
+                <button type="button" class="btn-esm-clear esm-clear" style="display:none;">선택 해제</button>
+              </div>
+
+              <div class="calc-row">
+                <div class="calc-field">
+                  <label>G마켓 원산지 상품타입</label>
+                  <select class="calc-input esm-origin-type"></select>
+                </div>
+                <div class="calc-field">
+                  <label>G마켓 원산지</label>
+                  <input type="text" class="calc-input esm-origin-input" placeholder="국가 또는 시/군/구 (예: 프랑스, 경기/수원시 팔달구)" autocomplete="off">
+                  <div class="hint-text esm-origin-hint"></div>
+                </div>
+              </div>
+              <div class="hint-text">문구·필기류·사무용품 같은 일반 상품은 원산지 표시 대상이 아니에요. 상품타입에서 <b>"해당없음"</b>을 고르고 원산지는 비워 두세요. 식품(농산물·수산물·가공식품)처럼 원산지를 꼭 표시해야 하는 카테고리만 원산지를 입력하면 돼요. 국내산은 시/군/구를 골라야 하고, 도 전체는 "경기/전체"처럼 선택할 수 있어요. 제조국은 위의 "원산지 / 제조국" 칸에 적어 주세요.</div>
+            </div>
             <div class="calc-field">
               <label>브랜드<span class="req">*</span></label>
               <div class="field-with-match-btn">
-                <select id="regBrand" class="calc-input" required><option value="">선택 안함</option></select>
+                <select id="regBrand" class="calc-input" required data-brand-picker><option value="">선택 안함</option></select>
                 <button type="button" class="btn-match" id="regOpenBrandRegisterBtn" title="새 창에서 브랜드를 등록합니다">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
                   브랜드등록
@@ -341,7 +370,36 @@
       <div class="calc-field"><label>2차 카테고리</label><select id="editCategory2" class="calc-input" disabled><option value="">1차 먼저 선택</option></select></div>
       <div class="calc-field"><label>3차 카테고리</label><select id="editCategory3" class="calc-input" disabled><option value="">2차 먼저 선택</option></select></div>
     </div>
-    <div class="calc-field"><label>브랜드</label><select id="editBrand" class="calc-input"><option value="">선택 안함</option></select></div>
+    <div class="esm-block" id="editEsmBlock">
+      <div class="esm-block-title">G마켓 등록 정보<span class="opt">(선택)</span></div>
+
+      <div class="calc-field">
+        <label>G마켓 카테고리</label>
+        <div class="esm-levels"></div>
+        <div class="esm-search">
+          <input type="text" class="calc-input esm-search-input" placeholder="이름으로 검색해서 바로 선택 (예: 텀블러, 사과)" autocomplete="off">
+          <div class="esm-results" style="display:none;"></div>
+        </div>
+        <div class="esm-selected"></div>
+        <div class="esm-site-wrap" style="display:none;"><select class="calc-input esm-site"></select></div>
+        <div class="esm-site-note hint-text"></div>
+        <button type="button" class="btn-esm-clear esm-clear" style="display:none;">선택 해제</button>
+      </div>
+
+      <div class="calc-row">
+        <div class="calc-field">
+          <label>G마켓 원산지 상품타입</label>
+          <select class="calc-input esm-origin-type"></select>
+        </div>
+        <div class="calc-field">
+          <label>G마켓 원산지</label>
+          <input type="text" class="calc-input esm-origin-input" placeholder="국가 또는 시/군/구 (예: 프랑스, 경기/수원시 팔달구)" autocomplete="off">
+          <div class="hint-text esm-origin-hint"></div>
+        </div>
+      </div>
+      <div class="hint-text">문구·필기류·사무용품 같은 일반 상품은 원산지 표시 대상이 아니에요. 상품타입에서 <b>"해당없음"</b>을 고르고 원산지는 비워 두세요. 식품(농산물·수산물·가공식품)처럼 원산지를 꼭 표시해야 하는 카테고리만 원산지를 입력하면 돼요. 국내산은 시/군/구를 골라야 하고, 도 전체는 "경기/전체"처럼 선택할 수 있어요. 제조국은 위의 "원산지 / 제조국" 칸에 적어 주세요.</div>
+    </div>
+    <div class="calc-field"><label>브랜드</label><select id="editBrand" class="calc-input" data-brand-picker><option value="">선택 안함</option></select></div>
 
     <div class="section-label">가격</div>
     <div class="calc-row">
@@ -445,6 +503,8 @@
 <th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/brand-picker.js}"></script>
+<script th:src="@{/js/esm-picker.js}"></script>
 <script th:src="@{/js/products.js}"></script>
 <script th:src="@{/js/admin-banners.js}"></script>
 </body>

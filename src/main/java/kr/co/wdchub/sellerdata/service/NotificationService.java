@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 벨 아이콘 알림 + (관리자 알림은) 시놀로지 Chat 전송.
@@ -35,15 +36,18 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final ChatNotifyService chatNotifyService;
+    private final AlimtalkService alimtalkService;
 
     /** 알림 저장은 별도 트랜잭션으로 합니다. 알림 저장이 실패해도 요청 처리/회원가입 같은 본 기능이 롤백되지 않게 하기 위해서예요. */
     private final TransactionTemplate requiresNewTx;
 
     public NotificationService(NotificationRepository notificationRepository,
                                ChatNotifyService chatNotifyService,
+                               AlimtalkService alimtalkService,
                                PlatformTransactionManager transactionManager) {
         this.notificationRepository = notificationRepository;
         this.chatNotifyService = chatNotifyService;
+        this.alimtalkService = alimtalkService;
         this.requiresNewTx = new TransactionTemplate(transactionManager);
         this.requiresNewTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
     }
@@ -54,11 +58,19 @@ public class NotificationService {
 
     // ── 만들기 ───────────────────────────────
 
-    /**
-     * 관리자에게 알림. Chat 메시지도 함께 보냅니다 (DB 커밋이 성공한 뒤에).
-     * @param chatBody Chat에 보낼 본문(여러 줄 가능). null이면 Chat은 보내지 않고 벨 알림만 만듭니다.
-     */
+    /** 관리자에게 벨 알림 + 시놀로지 Chat (알림톡은 보내지 않음) */
     public void notifyAdmins(String type, String title, String message, String linkUrl, String chatBody) {
+        notifyAdmins(type, title, message, linkUrl, chatBody, null, null);
+    }
+
+    /**
+     * 관리자에게 벨 알림 + 시놀로지 Chat + 카카오톡 알림톡. 외부 채널은 DB 커밋이 성공한 뒤에 보냅니다.
+     * @param chatBody   Chat에 보낼 본문(여러 줄 가능). null이면 Chat은 보내지 않습니다.
+     * @param alimKey    알림톡 템플릿 키(예: ADMIN_SIGNUP_NEW). null이면 알림톡은 보내지 않습니다.
+     * @param alimVars   알림톡 템플릿 변수(예: {"회사명": "OOO"})
+     */
+    public void notifyAdmins(String type, String title, String message, String linkUrl, String chatBody,
+                             String alimKey, Map<String, String> alimVars) {
         saveQuietly(Notification.builder()
                 .audience(NotificationAudience.ADMIN)
                 .type(type)
@@ -67,12 +79,25 @@ public class NotificationService {
                 .linkUrl(linkUrl)
                 .readYn(false)
                 .build());
+        alertAdmins(title, chatBody, linkUrl, alimKey, alimVars);
+    }
 
+    /** 벨 알림 없이 외부 채널(시놀로지 Chat, 알림톡)로만 관리자에게 알립니다. (채팅 문의처럼 벨을 따로 쓰는 경우) */
+    public void alertAdmins(String title, String chatBody, String linkUrl, String alimKey, Map<String, String> alimVars) {
         if (chatBody != null) {
             String text = "🔔 [WDC-HUB] " + title + "\n" + safeForChat(chatBody)
                     + (linkUrl != null ? "\n확인: " + publicBaseUrl + linkUrl : "");
             runAfterCommit(() -> chatNotifyService.send(text));
         }
+        if (alimKey != null) {
+            runAfterCommit(() -> alimtalkService.sendToAdmins(alimKey, alimVars));
+        }
+    }
+
+    /** 회원 휴대폰으로 카카오톡 알림톡 발송 (휴대폰 번호가 없거나 템플릿이 설정되지 않았으면 조용히 건너뜁니다) */
+    public void alertMember(String phone, String alimKey, Map<String, String> alimVars) {
+        if (phone == null || phone.isBlank() || alimKey == null) return;
+        runAfterCommit(() -> alimtalkService.sendToPhone(alimKey, phone, alimVars));
     }
 
     /** 회원 한 명에게 벨 알림 */

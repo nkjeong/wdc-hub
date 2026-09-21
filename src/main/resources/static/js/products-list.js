@@ -116,12 +116,14 @@ function getFilteredProducts() {
     rows = rows.filter((p) => p.cat === currentTab);
   }
   if (currentQuery) {
+    // 띄어쓰기로 나눈 모든 단어가 (상품명/브랜드/바코드 중) 들어 있는 상품만 (AND 검색)
+    const match = window.SearchUtils ? SearchUtils.matcher(currentQuery) : null;
     const q = currentQuery.toLowerCase();
-    rows = rows.filter((p) =>
-      (p.name && p.name.toLowerCase().includes(q)) ||
-      (p.brandName && p.brandName.toLowerCase().includes(q)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(q))
-    );
+    rows = rows.filter((p) => match
+      ? match([p.name, p.brandName, p.barcode])
+      : ((p.name && p.name.toLowerCase().includes(q)) ||
+         (p.brandName && p.brandName.toLowerCase().includes(q)) ||
+         (p.barcode && p.barcode.toLowerCase().includes(q))));
   }
   return rows;
 }
@@ -298,6 +300,7 @@ function buildProductDetailHTML(raw) {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
           이 상품 다운로드
         </button>
+        ${window.GmarketExport ? GmarketExport.buttonHtml() : ''}
         <button type="button" class="pd-request-btn" data-pd-request
                 data-product-id="${raw.id}"
                 data-product-name="${encodeURIComponent(raw.productName || '')}"
@@ -326,6 +329,13 @@ function openProductDetailOffcanvas(product) {
   document.getElementById('pdDownloadBtn').addEventListener('click', () => {
     downloadExcel([raw], sanitizeFileName(raw.productName || '상품'));
   });
+
+  const gmBtn = document.getElementById('pdGmarketBtn');
+  if (gmBtn && window.GmarketExport) {
+    gmBtn.addEventListener('click', () => {
+      GmarketExport.download([raw], sanitizeFileName(raw.productName || '상품'));
+    });
+  }
 
   const offcanvasEl = document.getElementById('productDetailOffcanvas');
   bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
@@ -508,6 +518,15 @@ async function downloadExcel(dataList, fileNamePrefix) {
 document.getElementById('excelDownloadBtn').addEventListener('click', () => {
   downloadExcel(getFilteredProducts().map((p) => p.raw), getExportFileNamePrefix());
 });
+
+// "엑셀 다운로드" 바로 옆에 "G마켓용 엑셀 다운로드" 버튼 (현재 필터링된 전체 상품을 G마켓 양식으로)
+if (window.GmarketExport) {
+  GmarketExport.mountListButton({
+    anchorId: 'excelDownloadBtn',
+    getList: () => getFilteredProducts().map((p) => p.raw),
+    getPrefix: () => getExportFileNamePrefix(),
+  });
+}
 
 loadProducts();
 

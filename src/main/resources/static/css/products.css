@@ -289,3 +289,74 @@ td:has(.status-pill){ line-height:1.9; }
 @media (max-width: 1100px){
   .banner-grid{ grid-template-columns:1fr; }
 }
+
+
+/* ---- G마켓 등록 정보 (카테고리 + 원산지 선택) ---- */
+.esm-block{
+  margin:4px 0 16px; padding:14px 14px 10px; border:1px solid var(--line-soft); border-radius:10px;
+  background:var(--surface-2);
+}
+.esm-block-title{ font-size:12px; font-weight:700; color:var(--gold); margin-bottom:10px; }
+.esm-block-title .opt{ color:var(--text-faint); font-weight:400; margin-left:6px; }
+.esm-levels{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; }
+.esm-search{ position:relative; margin-top:8px; }
+.esm-results{
+  position:absolute; z-index:20; left:0; right:0; top:100%; margin-top:4px; max-height:260px; overflow-y:auto;
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.35);
+}
+.esm-result{
+  display:block; width:100%; text-align:left; padding:8px 12px; background:none; border:none; border-bottom:1px solid var(--line-soft);
+  color:var(--text); font-size:12.5px; font-family:inherit; cursor:pointer;
+}
+.esm-result:last-child{ border-bottom:none; }
+.esm-result:hover, .esm-result:focus-visible{ background:var(--surface-2); color:var(--gold); outline:none; }
+.esm-result-empty{ padding:10px 12px; font-size:12px; color:var(--text-faint); }
+.esm-selected{ margin-top:8px; font-size:12.5px; color:var(--text-dim); word-break:break-word; }
+.esm-selected.ok b{ color:var(--text); }
+.esm-selected.warn{ color:var(--amber); }
+.esm-code{ font-family:var(--mono); font-size:11px; color:var(--text-faint); margin-left:6px; }
+.esm-site-wrap{ margin-top:8px; }
+.esm-site-note{ margin-top:6px; }
+.btn-esm-clear{
+  margin-top:8px; padding:5px 12px; border-radius:6px; border:1px solid var(--line); background:var(--surface);
+  color:var(--text-dim); font-size:11.5px; font-weight:600;
+}
+.btn-esm-clear:hover{ border-color:var(--red); color:var(--red); }
+.hint-text.ok{ color:var(--green); }
+.hint-text.err{ color:var(--red); }
+
+
+/* ---- 브랜드 선택 (검색 + 레이어) ---- */
+.brand-picker{ position:relative; flex:1; min-width:0; }
+.brand-picker-native{
+  position:absolute !important; left:0; bottom:0; width:100%; height:1px; opacity:0; pointer-events:none;
+  border:0 !important; padding:0 !important; margin:0 !important;   /* 화면에서는 숨기되, 필수 입력 안내는 이 자리에 뜹니다 */
+}
+.brand-picker-btn{
+  display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+  text-align:left; cursor:pointer; font-family:inherit; color:var(--text);
+}
+.brand-picker-btn .brand-picker-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.brand-picker-btn .brand-picker-label.empty{ color:var(--text-faint); }
+.brand-picker-btn svg{ flex-shrink:0; color:var(--text-dim); }
+.brand-picker-btn:focus-visible{ outline:none; border-color:var(--gold); }
+.brand-picker-layer{
+  position:fixed; z-index:2500; display:flex; flex-direction:column; min-height:120px;
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  box-shadow:0 14px 34px rgba(0,0,0,.45); overflow:hidden; font-family:inherit;
+}
+.brand-picker-layer[hidden]{ display:none; }
+.brand-picker-search{
+  margin:10px 10px 6px; padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+  background:var(--bg-raise); color:var(--text); font-size:13px; font-family:inherit; box-sizing:border-box; width:calc(100% - 20px);
+}
+.brand-picker-search:focus{ outline:none; border-color:var(--gold); }
+.brand-picker-list{ list-style:none; margin:0; padding:0 6px 6px; overflow-y:auto; flex:1; min-height:0; }
+.brand-picker-item{ display:flex; flex-direction:column; gap:1px; padding:8px 10px; border-radius:7px; cursor:pointer; color:var(--text); font-size:13px; }
+.brand-picker-item.none{ color:var(--text-dim); }
+.brand-picker-item.active{ background:var(--surface-2); }
+.brand-picker-item .n{ font-weight:600; word-break:break-word; }
+.brand-picker-item.selected .n{ color:var(--gold); }
+.brand-picker-item .s{ font-size:11.5px; color:var(--text-faint); word-break:break-word; }
+.brand-picker-empty{ padding:14px 12px; font-size:12.5px; color:var(--text-faint); }
+.brand-picker-foot{ padding:7px 12px; border-top:1px solid var(--line-soft); font-size:11.5px; color:var(--text-faint); }

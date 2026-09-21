@@ -168,3 +168,90 @@ if (signupFormEl && fileInput && fileHintEl) {
     }
   });
 }
+
+
+// ================================================================
+// 6) 오픈마켓 판매자 아이디 (선택 입력) — 줄 추가/삭제
+//    - 처음에는 1줄이 보이고, '+ 아이디 추가'로 늘립니다. 아이디를 안 적은 줄은 서버에서 무시됩니다.
+//    - 한 사이트에 아이디가 여러 개일 수 있어서 같은 사이트를 여러 줄로 고를 수 있어요.
+//    - 폼 필드 이름은 marketAccounts[0].site / marketAccounts[0].accountId 처럼 번호가 붙고,
+//      줄을 추가/삭제할 때마다 번호를 0부터 다시 매깁니다.
+// ================================================================
+(function setupMarketAccounts() {
+  const wrap = document.getElementById('marketRows');
+  const addBtn = document.getElementById('btnAddMarket');
+  const errEl = document.getElementById('marketError');
+  if (!wrap || !addBtn) return;
+
+  const MAX_ROWS = 30;
+  const rows = () => Array.from(wrap.querySelectorAll('.mk-row'));
+  const siteOf = (row) => row.querySelector('select');
+  const idOf = (row) => row.querySelector('input[type="text"]');
+
+  function reindex() {
+    rows().forEach((row, i) => {
+      siteOf(row).name = `marketAccounts[${i}].site`;
+      siteOf(row).id = `marketAccounts${i}.site`;
+      idOf(row).name = `marketAccounts[${i}].accountId`;
+      idOf(row).id = `marketAccounts${i}.accountId`;
+    });
+    addBtn.disabled = rows().length >= MAX_ROWS;
+  }
+
+  function clearRow(row) {
+    siteOf(row).value = '';
+    idOf(row).value = '';
+  }
+
+  function addRow() {
+    const list = rows();
+    if (list.length >= MAX_ROWS) return;
+    const clone = list[list.length - 1].cloneNode(true);
+    clearRow(clone);
+    wrap.appendChild(clone);
+    reindex();
+    siteOf(clone).focus();
+  }
+
+  addBtn.addEventListener('click', addRow);
+
+  wrap.addEventListener('click', (e) => {
+    const btn = e.target.closest('.mk-remove');
+    if (!btn) return;
+    const row = btn.closest('.mk-row');
+    if (rows().length <= 1) {   // 마지막 한 줄은 없애지 않고 내용만 비웁니다
+      clearRow(row);
+      return;
+    }
+    row.remove();
+    reindex();
+  });
+
+  // 아이디 칸에는 허용된 문자만 남깁니다 (영문, 숫자, . _ - @)
+  wrap.addEventListener('input', (e) => {
+    if (e.target.matches('input[type="text"]')) {
+      e.target.value = e.target.value.replace(/[^A-Za-z0-9._@-]/g, '');
+      if (errEl) errEl.style.display = 'none';
+    }
+  });
+
+  // 제출 전 확인: 아이디는 적었는데 사이트를 안 골랐다면 알려 줍니다.
+  // (서버에서 다시 그려지면 비밀번호 칸이 비워져서, 가능하면 미리 막는 게 편해요)
+  const form = document.getElementById('signupForm');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      const bad = rows().find((row) => idOf(row).value.trim() && !siteOf(row).value);
+      if (bad) {
+        e.preventDefault();
+        if (errEl) {
+          errEl.textContent = '오픈마켓 아이디를 입력한 줄은 사이트를 선택해 주세요.';
+          errEl.style.display = 'block';
+        }
+        bad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        siteOf(bad).focus();
+      }
+    });
+  }
+
+  reindex();
+})();

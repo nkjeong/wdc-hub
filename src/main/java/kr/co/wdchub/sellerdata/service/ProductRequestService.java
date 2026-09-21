@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +27,7 @@ public class ProductRequestService {
     // ── 회원 ─────────────────────────────────
 
     @Transactional
-    public Response createModifyRequest(CreateRequest req, String username, String company) {
+    public Response createModifyRequest(CreateRequest req, String username, String company, String phone) {
         String productName = req.productName() == null ? "" : req.productName().trim();
         String content = req.content() == null ? "" : req.content().trim();
 
@@ -50,6 +51,7 @@ public class ProductRequestService {
                 .status(ProductRequestStatus.RECEIVED)
                 .requesterUsername(username)
                 .requesterCompany(company)
+                .requesterPhone(phone)
                 .build());
 
         // 관리자에게 벨 알림 + 시놀로지 Chat 알림
@@ -62,7 +64,9 @@ public class ProductRequestService {
                 "회원: " + who + " (" + username + ")\n"
                         + "상품: " + saved.getProductName() + "\n"
                         + "항목: " + saved.getFieldType().getLabel() + "\n"
-                        + "내용: " + cut(content.replace('\n', ' '), 100));
+                        + "내용: " + cut(content.replace('\n', ' '), 100),
+                "ADMIN_REQUEST_NEW",
+                Map.of("회사명", who, "상품명", saved.getProductName(), "항목", saved.getFieldType().getLabel()));
         return toResponse(saved);
     }
 
@@ -112,6 +116,9 @@ public class ProductRequestService {
                     "수정 요청 처리 상태가 바뀌었어요",
                     msg,
                     "/product-requests");
+            // 회원 휴대폰으로 카카오톡 알림톡 (템플릿이 설정된 경우에만 발송됩니다)
+            notificationService.alertMember(pr.getRequesterPhone(), "MEMBER_REQUEST_UPDATED",
+                    Map.of("상품명", pr.getProductName(), "상태", req.status().getLabel()));
         }
         return toResponse(pr);
     }

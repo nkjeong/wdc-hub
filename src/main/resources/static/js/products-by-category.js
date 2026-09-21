@@ -465,6 +465,7 @@ function buildProductDetailHTML(raw) {
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9"/><path d="M2 15h20l-2 5H4l-2-5z"/></svg>
           이 상품 다운로드
         </button>
+        ${window.GmarketExport ? GmarketExport.buttonHtml() : ''}
         <button type="button" class="pd-request-btn" data-pd-request
                 data-product-id="${raw.id}"
                 data-product-name="${encodeURIComponent(raw.productName || '')}"
@@ -493,6 +494,13 @@ function openProductDetailOffcanvas(product) {
   document.getElementById('pdDownloadBtn').addEventListener('click', () => {
     downloadExcel([raw], sanitizeFileName(raw.productName || '상품'));
   });
+
+  const gmBtn = document.getElementById('pdGmarketBtn');
+  if (gmBtn && window.GmarketExport) {
+    gmBtn.addEventListener('click', () => {
+      GmarketExport.download([raw], sanitizeFileName(raw.productName || '상품'));
+    });
+  }
 
   const offcanvasEl = document.getElementById('productDetailOffcanvas');
   bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
@@ -692,6 +700,21 @@ document.getElementById('excelDownloadBtn').addEventListener('click', () => {
   }
   downloadExcel(getFilteredProductsByCategory().map((p) => p.raw), getExportFileNamePrefix());
 });
+
+// "엑셀 다운로드" 바로 옆에 "G마켓용 엑셀 다운로드" 버튼 (선택한 카테고리의 전체 상품을 G마켓 양식으로)
+if (window.GmarketExport) {
+  GmarketExport.mountListButton({
+    anchorId: 'excelDownloadBtn',
+    getList: () => {
+      if (!selectedCategory1) {
+        alert('카테고리를 먼저 선택해주세요.');
+        return null;
+      }
+      return getFilteredProductsByCategory().map((p) => p.raw);
+    },
+    getPrefix: () => getExportFileNamePrefix(),
+  });
+}
 
 // ── 엑셀 버튼 위 안내 말풍선 위치 계산 ──────────────
 // 부모 패널이 overflow:hidden이라 CSS만으로는 위로 못 튀어나가서, 버튼의 실제 화면 좌표를 계산해 고정 배치합니다.

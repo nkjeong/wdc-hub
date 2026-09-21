@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Service
@@ -24,13 +25,16 @@ public class MemberService {
     private final PasswordEncoder passwordEncoder;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final MarketAccountService marketAccountService;
 
     public MemberService(MemberRepository memberRepository, PasswordEncoder passwordEncoder,
-                          FileStorageService fileStorageService, NotificationService notificationService) {
+                          FileStorageService fileStorageService, NotificationService notificationService,
+                          MarketAccountService marketAccountService) {
         this.memberRepository = memberRepository;
         this.passwordEncoder = passwordEncoder;
         this.fileStorageService = fileStorageService;
         this.notificationService = notificationService;
+        this.marketAccountService = marketAccountService;
     }
 
     public boolean isLoginIdDuplicate(String loginId) {
@@ -73,6 +77,9 @@ public class MemberService {
 
         Member saved = memberRepository.save(member);
 
+        // 오픈마켓 판매자 아이디(선택 입력) 저장 — 가입과 같은 트랜잭션이라 실패하면 가입도 함께 취소됩니다.
+        marketAccountService.saveForMember(saved.getId(), form.getMarketAccounts());
+
         // 관리자에게 벨 알림 + 시놀로지 Chat 알림 (연락처/이메일 같은 개인정보는 Chat에 보내지 않습니다)
         notificationService.notifyAdmins(
                 "MEMBER_SIGNUP_NEW",
@@ -81,7 +88,11 @@ public class MemberService {
                 "/admin/members",
                 "회사명: " + saved.getCompanyName() + "\n"
                         + "대표자: " + saved.getCeoName() + "\n"
-                        + "아이디: " + saved.getLoginId());
+                        + "아이디: " + saved.getLoginId(),
+                "ADMIN_SIGNUP_NEW",
+                Map.of("회사명", String.valueOf(saved.getCompanyName()),
+                        "대표자", String.valueOf(saved.getCeoName()),
+                        "아이디", String.valueOf(saved.getLoginId())));
 
         return saved;
     }
@@ -110,6 +121,10 @@ public class MemberService {
         member.setApprovedAt(LocalDateTime.now());
         // 승인 시점에 대외 노출용 코드를 발급합니다. 예: SLR-2026-000123
         member.setMemberCode("SLR-" + Year.now().getValue() + "-" + String.format("%06d", member.getId()));
+
+        // 승인 결과를 회원 휴대폰으로 카카오톡 알림톡 (템플릿이 설정된 경우에만 발송)
+        notificationService.alertMember(member.getPhoneNumber(), "MEMBER_APPROVED",
+                Map.of("회사명", String.valueOf(member.getCompanyName())));
     }
 
     @Transactional
@@ -118,6 +133,9 @@ public class MemberService {
                 .orElseThrow(() -> new NoSuchElementException("회원을 찾을 수 없습니다: " + id));
 
         member.setStatus(MemberStatus.REJECTED);
+
+        notificationService.alertMember(member.getPhoneNumber(), "MEMBER_REJECTED",
+                Map.of("회사명", String.valueOf(member.getCompanyName())));
     }
 
     @Transactional

@@ -3,24 +3,114 @@
 <body>
 
 <footer class="footer" th:fragment="footer">
+  <style>
+    /* ── 브랜드 영역 배경: 입체감 있는 구슬들이 천천히 떠다닙니다 (CSS만 사용, 글자 뒤에 깔림) ── */
+    .fh{
+      position:relative; overflow:hidden; isolation:isolate;
+      min-height:150px; padding:18px 20px; border-radius:14px;
+      border:1px solid var(--line-soft);
+      background:
+        radial-gradient(120% 90% at 100% 100%, rgba(91,140,255,.10), transparent 60%),
+        radial-gradient(110% 90% at 0% 0%, rgba(212,166,42,.10), transparent 55%),
+        var(--surface-2);
+    }
+    .fh-inner{ position:relative; z-index:3; max-width:64%; }  /* 글자는 왼쪽 64%에만 두고, 오른쪽은 구슬 공간으로 씁니다 */
+    .fh-inner .footer-desc{ text-shadow:0 1px 8px var(--surface-2); }
+    .fh-orbs{ position:absolute; inset:0; z-index:1; pointer-events:none; }
+    /* 글자가 있는 왼쪽은 구슬이 살짝 가려지도록 옅은 막을 덮어서, 글자가 잘 읽히게 합니다 */
+    .fh::after{
+      content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+      background:linear-gradient(90deg, var(--surface-2) 0%, var(--surface-2) 18%, transparent 68%);
+      opacity:.82;
+    }
+
+    /* 구슬 하나: 왼쪽 위에서 빛이 들어오는 것처럼 밝은 점 + 안쪽 그림자 + 바닥 그림자로 입체감을 냅니다 */
+    .fh-orb{
+      position:absolute; display:block; border-radius:50%;
+      width:var(--d); height:var(--d);
+      left:var(--x); top:var(--y);
+      background:radial-gradient(circle at 32% 28%, var(--hi) 0%, var(--mid) 42%, var(--lo) 78%, var(--edge) 100%);
+      box-shadow:
+        inset -6px -8px 14px rgba(0,0,0,.38),
+        inset 4px 5px 10px rgba(255,255,255,.14),
+        0 12px 22px rgba(0,0,0,.35);
+      opacity:var(--o, .9);
+      filter:blur(var(--b, 0px));
+      will-change:transform;
+      animation:fhFloat var(--t) ease-in-out var(--dl, 0s) infinite alternate;
+    }
+    @keyframes fhFloat{
+      0%   { transform:translate3d(0, 0, 0) scale(1); }
+      50%  { transform:translate3d(var(--dx), var(--dy), 0) scale(var(--s, 1.08)); }
+      100% { transform:translate3d(calc(var(--dx) * -0.7), calc(var(--dy) * -0.9), 0) scale(1); }
+    }
+
+    /* 색: 금색 / 파랑 / 청회색 세 종류. 멀리 있는 것처럼 작고 흐리고 느린 구슬, 가까운 것처럼 크고 선명하고 빠른 구슬을 섞었습니다 */
+    .fh-orb.gold{ --hi:#FBE7A0; --mid:#D4A62A; --lo:#8A6A14; --edge:#3D2E07; }
+    .fh-orb.blue{ --hi:#B7CBFF; --mid:#5B8CFF; --lo:#2B4A9E; --edge:#121F4A; }
+    .fh-orb.slate{ --hi:#D3DBE8; --mid:#8E9BB3; --lo:#485369; --edge:#1E2430; }
+
+    .fh-orb.o1{ --d:64px; --x:66%; --y:52%; --t:19s; --dx:-16px; --dy:-22px; --s:1.10; --o:.92; }
+    .fh-orb.o2{ --d:38px; --x:84%; --y:12%; --t:24s; --dx:-12px; --dy:26px;  --s:1.14; --o:.85; --dl:-6s; }
+    .fh-orb.o3{ --d:28px; --x:46%; --y:70%; --t:28s; --dx:30px;  --dy:-30px; --s:1.12; --o:.60; --b:1.2px; --dl:-11s; }
+    .fh-orb.o4{ --d:18px; --x:58%; --y:14%; --t:31s; --dx:-20px; --dy:22px;  --s:1.20; --o:.50; --b:1.6px; --dl:-3s; }
+    .fh-orb.o5{ --d:50px; --x:90%; --y:64%; --t:22s; --dx:-14px; --dy:-26px; --s:1.08; --o:.88; --dl:-9s; }
+    .fh-orb.o6{ --d:14px; --x:76%; --y:40%; --t:34s; --dx:22px;  --dy:-18px; --s:1.25; --o:.45; --b:2px; --dl:-15s; }
+    .fh-orb.o7{ --d:24px; --x:36%; --y:8%;  --t:26s; --dx:26px;  --dy:24px;  --s:1.15; --o:.55; --b:1.4px; --dl:-19s; }
+
+    /* 라이트 모드: 그림자를 부드럽게, 배경 색을 옅게 */
+    :root[data-theme="light"] .fh{
+      background:
+        radial-gradient(120% 90% at 100% 100%, rgba(91,140,255,.14), transparent 60%),
+        radial-gradient(110% 90% at 0% 0%, rgba(212,166,42,.16), transparent 55%),
+        var(--surface-2);
+    }
+    :root[data-theme="light"] .fh-orb{
+      box-shadow:
+        inset -6px -8px 14px rgba(0,0,0,.20),
+        inset 4px 5px 10px rgba(255,255,255,.35),
+        0 10px 18px rgba(30,40,60,.18);
+    }
+
+    /* 움직임을 줄이는 설정을 쓰는 사용자에게는 구슬을 멈춰서 보여줍니다 */
+    @media (prefers-reduced-motion: reduce){
+      .fh-orb{ animation:none; }
+    }
+    /* 좁은 화면에서는 구슬 수를 줄여 가볍게 */
+    @media (max-width:640px){
+      .fh-inner{ max-width:100%; }
+      .fh-orb.o4, .fh-orb.o6, .fh-orb.o7{ display:none; }
+    }
+  </style>
   <div class="footer-grid">
-    <div>
-      <div class="footer-brand"><div class="brand-mark" style="width:22px;height:22px;"><img th:src="@{/images/logo.png}" alt="WDC-HUB 로고"></div><span style="font-weight:700; font-size:14px;">WDC-HUB</span></div>
-      <p class="footer-desc">셀러를 위한 상품 소싱 데이터 플랫폼입니다. 번들·수입·일반 상품의 공급가와 마진 정보를 매일 업데이트하여 제공합니다.</p>
+    <div class="fh">
+      <div class="fh-orbs" aria-hidden="true">
+        <span class="fh-orb gold o1"></span>
+        <span class="fh-orb blue o2"></span>
+        <span class="fh-orb slate o3"></span>
+        <span class="fh-orb gold o4"></span>
+        <span class="fh-orb blue o5"></span>
+        <span class="fh-orb gold o6"></span>
+        <span class="fh-orb slate o7"></span>
+      </div>
+      <div class="fh-inner">
+        <div class="footer-brand"><div class="brand-mark" style="width:22px;height:22px;"><img th:src="@{/images/logo.png}" alt="WDC-HUB 로고"></div><span style="font-weight:700; font-size:14px;">WDC-HUB</span></div>
+        <p class="footer-desc">셀러를 위한 상품 소싱 데이터 플랫폼입니다. 번들·수입·일반 상품의 공급가와 마진 정보를 매일 업데이트하여 제공합니다.</p>
+      </div>
     </div>
     <div class="footer-col">
       <div class="footer-col-title">회사정보</div>
-      <p>(주)품가 컴퍼니 · 대표 김품가</p>
-      <p>사업자등록번호 123-45-67890</p>
-      <p>통신판매업 신고 제2026-서울강남-0000호</p>
-      <p>서울특별시 강남구 테헤란로 000, 5층</p>
+      <p>(주식회사)세상종합물류 · 대표 남궁정</p>
+      <p>사업자등록번호 810-88-02820</p>
+      <p>통신판매업 신고 제2023-부산사상구-0581호</p>
+      <p>부산광역시 사상구 새벽시장로63번길 19, 1층(지음오피스)</p>
     </div>
     <div class="footer-col">
       <div class="footer-col-title">고객지원</div>
-      <a href="#">1:1 문의</a>
+      <a th:href="@{/inquiries}">1:1 문의</a>
       <a href="#">이용 가이드</a>
       <a href="#">API 연동 문서</a>
-      <p>support@wdc-hub.co.kr</p>
+      <p>wmullyu@gmail.com</p>
       <p>평일 09:00–18:00 (주말·공휴일 휴무)</p>
     </div>
     <div class="footer-col">

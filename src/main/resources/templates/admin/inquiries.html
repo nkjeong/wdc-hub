@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 1:1 문의관리</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<link rel="stylesheet" th:href="@{/css/brands.css}">
+<style>
+  .aq-pill{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap;
+    background:var(--surface-2); color:var(--text-dim); }
+  .aq-pill.RECEIVED{ background:rgba(91,140,255,.12); color:var(--blue); }
+  .aq-pill.IN_PROGRESS{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .aq-pill.ANSWERED{ background:rgba(52,201,126,.12); color:var(--green); }
+  .aq-mono{ font-family:var(--mono); font-size:12px; color:var(--text-dim); white-space:nowrap; }
+  .aq-sub{ font-size:11.5px; color:var(--text-faint); margin-top:2px; }
+  .aq-table{ min-width:900px; }   /* 창을 줄이면 표가 찌그러지는 대신 가로 스크롤이 생깁니다 */
+  .aq-title-cell{ max-width:380px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  tr.aq-row{ cursor:pointer; }
+  tr.aq-row:hover td{ background:rgba(128,128,128,.06); }
+  tr.aq-row.selected td{ background:rgba(212,166,42,.08); }
+  .btn.danger{ color:var(--red); }
+  .aq-grid{ display:grid; grid-template-columns:110px 1fr; gap:8px 14px; font-size:13px; margin-bottom:14px; }
+  .aq-grid dt{ color:var(--text-faint); font-weight:600; }
+  .aq-grid dd{ margin:0; word-break:break-word; }
+  .aq-content{ white-space:pre-wrap; word-break:break-word; line-height:1.65; padding:12px 14px; border-radius:8px;
+    background:var(--bg-raise); border:1px solid var(--line); margin-bottom:12px; font-size:13px; }
+  .aq-att{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .aq-att a{ font-size:12.5px; padding:6px 12px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2); }
+  .aq-att a:hover{ border-color:var(--gold); color:var(--gold); }
+  textarea.calc-input{ width:100%; resize:vertical; min-height:150px; line-height:1.6; font-family:inherit; }
+  .aq-filter{ width:auto; min-width:120px; }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='inquiries-admin')}"></aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='회원, 제목으로 검색',
+          showKbdHint=false,
+          showCategoryBtn=false,
+          avatarText=${avatarText},
+          companyName=${companyName},
+          showExport=false,
+          showCalcBtn=false,
+          showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">1:1 문의관리<span>회원이 접수한 문의를 확인하고 답변과 처리 상태를 남겨요</span></div>
+      </div>
+
+      <!-- 목록 -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">전체 문의<span class="n" id="aqCount">0건</span></div>
+          <div class="panel-action">
+            <select id="aqStatusFilter" class="calc-input aq-filter" aria-label="상태 필터">
+              <option value="">전체 상태</option>
+              <option value="RECEIVED">접수</option>
+              <option value="IN_PROGRESS">처리중</option>
+              <option value="ANSWERED">답변완료</option>
+            </select>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="aq-table">
+            <thead>
+              <tr>
+                <th style="width:90px">상태</th>
+                <th style="width:130px">접수일</th>
+                <th>회원</th>
+                <th style="width:110px">분류</th>
+                <th>제목</th>
+                <th style="width:60px">첨부</th>
+              </tr>
+            </thead>
+            <tbody id="aqBody">
+              <tr class="empty-row"><td colspan="6">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 답변 폼 -->
+      <div class="panel" id="aqFormPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title">문의 확인 · 답변</div>
+          <div class="panel-action">
+            <button type="button" id="aqCloseBtn" class="btn">닫기</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <dl class="aq-grid">
+            <dt>접수일</dt><dd id="dDate"></dd>
+            <dt>회원</dt><dd id="dMember"></dd>
+            <dt>분류</dt><dd id="dCategory"></dd>
+            <dt>제목</dt><dd id="dTitle" style="font-weight:700;"></dd>
+          </dl>
+          <div class="aq-content" id="dContent"></div>
+          <div class="aq-att" id="dAtt"></div>
+
+          <div class="calc-row">
+            <div class="calc-field">
+              <label for="fStatus">처리 상태</label>
+              <select id="fStatus" class="calc-input">
+                <option value="RECEIVED">접수</option>
+                <option value="IN_PROGRESS">처리중</option>
+                <option value="ANSWERED">답변완료</option>
+              </select>
+            </div>
+          </div>
+          <div class="calc-field">
+            <label for="fAnswer">답변 <span style="font-weight:400; opacity:.7;">(회원에게 그대로 보여요)</span></label>
+            <textarea id="fAnswer" class="calc-input" maxlength="4000" placeholder="답변을 입력하세요. '답변완료'로 저장하려면 답변 내용이 꼭 필요해요."></textarea>
+          </div>
+
+          <div class="form-actions" style="justify-content:space-between;">
+            <button type="button" class="btn danger" id="aqDeleteBtn">문의 삭제</button>
+            <button type="button" class="btn gold" id="aqSaveBtn">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- footer -->
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script th:src="@{/js/ticker.js}"></script>
+<script>
+(function () {
+  'use strict';
+
+  var API = '/admin/inquiries';
+  var csrfToken = (document.querySelector('meta[name="_csrf"]') || {}).content;
+  var csrfHeader = (document.querySelector('meta[name="_csrf_header"]') || {}).content;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmt(v) {
+    if (!v) return '';
+    if (Array.isArray(v)) return v[0] + '-' + pad(v[1]) + '-' + pad(v[2]) + ' ' + pad(v[3] || 0) + ':' + pad(v[4] || 0);
+    return String(v).replace('T', ' ').slice(0, 16);
+  }
+  function headers(extra) { var h = extra || {}; if (csrfToken && csrfHeader) h[csrfHeader] = csrfToken; return h; }
+
+  async function request(url, options) {
+    var res = await fetch(url, options);
+    if (!res.ok) {
+      var msg = '요청 처리 중 오류가 발생했어요. (상태코드 ' + res.status + ')';
+      try { var t = await res.text(); if (t) msg += '\n' + t.slice(0, 300); } catch (e) { /* ignore */ }
+      throw new Error(msg);
+    }
+    var text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  var all = [];
+  var selectedId = null;
+
+  async function load() {
+    try {
+      all = await request(API + '/list', { headers: { 'Accept': 'application/json' } });
+      render();
+    } catch (e) {
+      $('aqBody').innerHTML = '<tr class="empty-row"><td colspan="6">목록을 불러오지 못했어요. 새로고침해 주세요.</td></tr>';
+    }
+  }
+
+  function filtered() {
+    var status = $('aqStatusFilter').value;
+    var kw = (($('topbarSearchInput') || {}).value || '').trim().toLowerCase();
+    return all.filter(function (q) {
+      if (status && q.status !== status) return false;
+      if (!kw) return true;
+      var fields = [q.title, q.requesterCompany, q.requesterUsername, q.content];
+      if (window.SearchUtils) return SearchUtils.matches(kw, fields);   // 띄어쓰기 AND 검색
+      return fields.some(function (v) { return (v || '').toLowerCase().indexOf(kw) !== -1; });
+    });
+  }
+
+  function render() {
+    var rows = filtered();
+    $('aqCount').textContent = rows.length + '건';
+    var body = $('aqBody');
+    body.innerHTML = '';
+    if (!rows.length) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="6">' + (all.length ? '조건에 맞는 문의가 없어요.' : '아직 접수된 문의가 없어요.') + '</td></tr>';
+      return;
+    }
+    rows.forEach(function (q) {
+      var tr = document.createElement('tr');
+      tr.className = 'aq-row' + (q.id === selectedId ? ' selected' : '');
+      var n = (q.attachments || []).length;
+      tr.innerHTML =
+        '<td><span class="aq-pill ' + esc(q.status) + '">' + esc(q.statusLabel) + '</span></td>' +
+        '<td class="aq-mono">' + esc(fmt(q.createdAt)) + '</td>' +
+        '<td>' + esc(q.requesterCompany || '-') + '<div class="aq-sub">' + esc(q.requesterUsername) + '</div></td>' +
+        '<td>' + esc(q.categoryLabel) + '</td>' +
+        '<td class="aq-title-cell" title="' + esc(q.title).replace(/"/g, '&quot;') + '">' + esc(q.title) + '</td>' +
+        '<td>' + (n ? n + '개' : '-') + '</td>';
+      tr.addEventListener('click', function () { openDetail(q.id); });
+      body.appendChild(tr);
+    });
+  }
+
+  function openDetail(id) {
+    var q = all.find(function (x) { return x.id === id; });
+    if (!q) return;
+    selectedId = id;
+    $('dDate').textContent = fmt(q.createdAt);
+    $('dMember').textContent = (q.requesterCompany || '-') + ' (' + q.requesterUsername + ')';
+    $('dCategory').textContent = q.categoryLabel;
+    $('dTitle').textContent = q.title;
+    $('dContent').textContent = q.content;
+    var att = $('dAtt');
+    att.innerHTML = (q.attachments || []).map(function (a) {
+      return '<a href="' + API + '/attachments/' + a.id + '/download">' + esc(a.fileName) + '</a>';
+    }).join('');
+    $('fStatus').value = q.status;
+    $('fAnswer').value = q.answer || '';
+    var panel = $('aqFormPanel');
+    panel.style.display = '';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    render();
+  }
+
+  function closeDetail() { selectedId = null; $('aqFormPanel').style.display = 'none'; render(); }
+
+  async function save() {
+    if (selectedId == null) return;
+    var btn = $('aqSaveBtn');
+    btn.disabled = true;
+    try {
+      var id = selectedId;
+      await request(API + '/' + id, {
+        method: 'PUT',
+        headers: headers({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ status: $('fStatus').value, answer: $('fAnswer').value }),
+      });
+      await load();
+      var saved = all.find(function (x) { return x.id === id; });
+      if (saved) {
+        $('fStatus').value = saved.status;
+        $('fAnswer').value = saved.answer || '';
+        alert('저장했어요.\n처리 상태: ' + saved.statusLabel + '\n답변: ' + (saved.answer ? saved.answer.length + '자 저장됨' : '없음'));
+      } else { alert('저장했어요.'); }
+    } catch (e) {
+      alert(e.message);
+    } finally { btn.disabled = false; }
+  }
+
+  async function remove() {
+    if (selectedId == null) return;
+    if (!window.confirm('이 문의를 삭제할까요? 첨부파일도 함께 지워지고, 회원의 내역에서도 사라져요.\n되돌릴 수 없어요.')) return;
+    try {
+      await request(API + '/' + selectedId, { method: 'DELETE', headers: headers() });
+      closeDetail();
+      await load();
+    } catch (e) { alert(e.message); }
+  }
+
+  $('aqStatusFilter').addEventListener('change', render);
+  $('aqCloseBtn').addEventListener('click', closeDetail);
+  $('aqSaveBtn').addEventListener('click', save);
+  $('aqDeleteBtn').addEventListener('click', remove);
+  var topSearch = $('topbarSearchInput');
+  if (topSearch) topSearch.addEventListener('input', render);
+
+  load();
+})();
+</script>
+</body>
+</html>

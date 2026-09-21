@@ -88,6 +88,24 @@ public class Product {
     @Column(name = "country_of_origin", length = 50)
     private String countryOfOrigin;
 
+    // ── G마켓(ESM+) 등록 정보 (선택) — G마켓 상품 일괄등록 양식의 카테고리·원산지 칸에 쓰입니다 ──
+
+    /** ESM 카테고리 코드 (20자리 문자열, 예: 00030001000100010001). esm_category.esm_code */
+    @Column(name = "esm_category_code", length = 20)
+    private String esmCategoryCode;
+
+    /** G마켓 카테고리 코드 (27자리). ESM 카테고리에 G마켓 코드가 여러 개인 경우 그중 선택한 것 */
+    @Column(name = "gmarket_category_code", length = 30)
+    private String gmarketCategoryCode;
+
+    /** 원산지 상품타입: 농산물 / 수산물 / 가공식품 / 해당없음 / 상세설명표기 */
+    @Column(name = "origin_product_type", length = 20)
+    private String originProductType;
+
+    /** 원산지 코드 (국내 시/군/구 또는 해외 국가). esm_origin.origin_code */
+    @Column(name = "origin_code", length = 10)
+    private String originCode;
+
     /** 인증사항 — 값이 없으면 "해당사항없음"이 그대로 저장됩니다 (라디오 버튼: 인증사항입력/해당사항없음) */
     @Column(name = "certification", length = 255)
     private String certification;

@@ -8,6 +8,7 @@ const PAGE_SIZE = 10;
 let allBrands = [];
 let currentPage = 1;
 let editingId = null; // null이면 등록 모드, 값이 있으면 수정 모드
+let searchQuery = ''; // 상단바 검색창에 입력한 검색어 (띄어쓰기로 나눈 모든 단어가 들어 있는 브랜드만 보여줍니다)
 
 const tableBody = document.getElementById('brandTableBody');
 const brandCountEl = document.getElementById('brandCount');
@@ -75,16 +76,34 @@ function importTypeLabel(type) {
   return '<span class="type-pill">-</span>';
 }
 
+// 검색: 브랜드코드, 브랜드명(국문/영문), 제조사, 수입사, 취급상품, 원산지, 카테고리 중에서
+// 띄어쓰기로 나눈 모든 단어가 들어 있는 브랜드만 남깁니다 (AND 검색).
+function getFilteredBrands() {
+  if (!searchQuery) return allBrands;
+  const match = window.SearchUtils ? SearchUtils.matcher(searchQuery) : null;
+  const q = searchQuery.toLowerCase();
+  return allBrands.filter((b) => {
+    const fields = [b.brandCode, b.brandNameKr, b.brandNameEn, b.manufacturerName, b.importerName,
+                    b.productSummary, b.countryOfOrigin, b.category1Name];
+    return match ? match(fields) : fields.some((f) => (f || '').toLowerCase().includes(q));
+  });
+}
+
 function renderTable() {
-  brandCountEl.textContent = allBrands.length + '건';
+  const rows = getFilteredBrands();
+  brandCountEl.textContent = searchQuery ? `${rows.length}건 (전체 ${allBrands.length}건)` : `${allBrands.length}건`;
 
   if (allBrands.length === 0) {
     tableBody.innerHTML = '<tr class="empty-row"><td colspan="11">등록된 브랜드가 없어요. 위의 "브랜드 등록" 버튼으로 추가해보세요.</td></tr>';
     return;
   }
+  if (rows.length === 0) {
+    tableBody.innerHTML = '<tr class="empty-row"><td colspan="11">검색 결과가 없어요. 다른 검색어로 찾아 보세요.</td></tr>';
+    return;
+  }
 
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = allBrands.slice(start, start + PAGE_SIZE);
+  const pageItems = rows.slice(start, start + PAGE_SIZE);
 
   tableBody.innerHTML = pageItems.map((b) => `
     <tr>
@@ -132,7 +151,7 @@ async function handleDelete(id) {
 // ── 페이지네이션 ──────────────────────────────
 
 function renderPagination() {
-  const totalPages = Math.max(1, Math.ceil(allBrands.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(getFilteredBrands().length / PAGE_SIZE));
   paginationEl.innerHTML = '';
 
   if (totalPages <= 1) return;
@@ -155,11 +174,23 @@ function renderPagination() {
 }
 
 function goToPage(page) {
-  const totalPages = Math.max(1, Math.ceil(allBrands.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(getFilteredBrands().length / PAGE_SIZE));
   if (page < 1 || page > totalPages) return;
   currentPage = page;
   renderTable();
   renderPagination();
+}
+
+// ── 상단바 검색창 연동 (입력하는 즉시 목록이 걸러져요) ──────────────
+
+const topSearchInput = document.getElementById('topbarSearchInput');
+if (topSearchInput) {
+  topSearchInput.addEventListener('input', () => {
+    searchQuery = topSearchInput.value.trim();
+    currentPage = 1;
+    renderTable();
+    renderPagination();
+  });
 }
 
 // ── 등록/수정 폼 ──────────────────────────────

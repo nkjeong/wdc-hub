@@ -16,9 +16,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
  * 회원용 공지사항 — 전체보기 화면과 첨부파일 다운로드.
@@ -42,6 +44,17 @@ public class NoticeController {
         model.addAttribute("companyName", userDetails.getMember().getCompanyName());
         model.addAttribute("notices", noticeService.getAll());
         return "notices"; // templates/notices.html
+    }
+
+    /** 상단 티커용 — 최근 공지사항 5개의 제목만 가볍게 내려줍니다. */
+    public record TickerItem(Long id, String title, String tagLabel) {}
+
+    @GetMapping("/ticker")
+    @ResponseBody
+    public List<TickerItem> ticker() {
+        return noticeService.getRecent(5).stream()
+                .map(n -> new TickerItem(n.id(), n.title(), n.tagLabel()))
+                .toList();
     }
 
     @GetMapping("/{id}/download")

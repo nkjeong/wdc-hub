@@ -67,6 +67,10 @@ public class SynologyUploadService {
     @Value("${app.synology.file-field-name:file}")
     private String fileFieldName;
 
+    /** 업로드 스크립트와 맞춘 공유 비밀키 (NAS의 index.php 안 $uploadToken과 같아야 함) */
+    @Value("${app.synology.upload-token:}")
+    private String uploadToken;
+
     /** 삭제 스크립트 주소. 비워두면 upload-url 뒤에 delete.php를 붙여 씁니다. */
     @Value("${app.synology.delete-url:}")
     private String deleteUrl;
@@ -105,6 +109,9 @@ public class SynologyUploadService {
     private String doUpload(org.springframework.core.io.Resource resource) {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add(fileFieldName, resource);
+        if (uploadToken != null && !uploadToken.isBlank()) {
+            body.add("token", uploadToken); // 멀티파트 폼의 일반 항목으로 함께 전송
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);

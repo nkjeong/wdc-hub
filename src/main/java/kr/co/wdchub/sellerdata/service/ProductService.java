@@ -10,6 +10,9 @@ import kr.co.wdchub.sellerdata.repository.BrandRepository;
 import kr.co.wdchub.sellerdata.repository.Category1Repository;
 import kr.co.wdchub.sellerdata.repository.Category2Repository;
 import kr.co.wdchub.sellerdata.repository.Category3Repository;
+import kr.co.wdchub.sellerdata.repository.EsmCategoryRepository;
+import kr.co.wdchub.sellerdata.repository.EsmOriginRepository;
+import kr.co.wdchub.sellerdata.repository.EsmSiteCategoryRepository;
 import kr.co.wdchub.sellerdata.repository.ProductOptionRepository;
 import kr.co.wdchub.sellerdata.repository.ProductRepository;
 import kr.co.wdchub.sellerdata.service.ProductImageService.MainImageUrls;
@@ -22,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** 상품 관리 서비스 — 관리자 전용 등록/수정/삭제 + 회원 공용 조회/응답 변환 */
@@ -38,6 +42,12 @@ public class ProductService {
     private final Category3Repository category3Repository;
     private final BrandRepository brandRepository;
     private final ProductImageService productImageService;
+    private final EsmCategoryRepository esmCategoryRepository;
+    private final EsmSiteCategoryRepository esmSiteCategoryRepository;
+    private final EsmOriginRepository esmOriginRepository;
+
+    /** 양식의 '원산지 상품타입' 칸에 들어갈 수 있는 값 */
+    private static final Set<String> ORIGIN_PRODUCT_TYPES = Set.of("농산물", "수산물", "가공식품", "해당없음", "상세설명표기");
 
     public List<Product> getAllProducts() {
         return productRepository.findAllByOrderByCreatedAtDesc();
@@ -121,6 +131,10 @@ public class ProductService {
                 p.getBrand() != null ? p.getBrand().getManufacturerName() : null,
                 p.getBrand() != null ? p.getBrand().getImporterName() : null,
                 p.getCountryOfOrigin(),
+                p.getEsmCategoryCode(),
+                p.getGmarketCategoryCode(),
+                p.getOriginProductType(),
+                p.getOriginCode(),
                 p.getCertification(),
                 p.getSellerPrice1(),
                 p.getSellerPrice2(),
@@ -148,6 +162,63 @@ public class ProductService {
 
     // ── 내부 헬퍼 ──────────────────────────────────
 
+    /**
+     * G마켓 카테고리/원산지(선택)를 검사해서 상품에 반영합니다.
+     * 코드가 실제로 존재하는지, G마켓 세부 카테고리가 그 ESM 카테고리에 속한 것인지 확인해서
+     * 나중에 G마켓 양식을 내려받을 때 잘못된 코드가 들어가는 일을 막습니다.
+     */
+    private void applyGmarketInfo(Product product, ProductRequest req) {
+        // 카테고리
+        String esmCode = blankToNull(req.esmCategoryCode());
+        if (esmCode == null) {
+            product.setEsmCategoryCode(null);
+            product.setGmarketCategoryCode(null);
+        } else {
+            if (!esmCategoryRepository.existsById(esmCode)) {
+                throw new IllegalArgumentException("존재하지 않는 G마켓 카테고리입니다: " + esmCode);
+            }
+            List<EsmSiteCategory> gOptions = esmSiteCategoryRepository.findByEsmCodeAndSiteOrderBySiteCode(esmCode, "G");
+            if (gOptions.isEmpty()) {
+                throw new IllegalArgumentException("선택한 카테고리는 G마켓에 대응하는 코드가 없어요. 다른 카테고리를 골라 주세요.");
+            }
+            String gCode = blankToNull(req.gmarketCategoryCode());
+            if (gCode == null) {
+                if (gOptions.size() > 1) {
+                    throw new IllegalArgumentException("G마켓 세부 카테고리를 선택해 주세요. 이 카테고리는 G마켓에 세부 카테고리가 여러 개 있어요.");
+                }
+                gCode = gOptions.get(0).getSiteCode();
+            } else {
+                final String chosen = gCode;
+                if (gOptions.stream().noneMatch(o -> o.getSiteCode().equals(chosen))) {
+                    throw new IllegalArgumentException("선택한 G마켓 세부 카테고리가 이 카테고리에 속하지 않아요.");
+                }
+            }
+            product.setEsmCategoryCode(esmCode);
+            product.setGmarketCategoryCode(gCode);
+        }
+
+        // 원산지
+        String originCode = blankToNull(req.originCode());
+        String originType = blankToNull(req.originProductType());
+        if (originType != null && !ORIGIN_PRODUCT_TYPES.contains(originType)) {
+            throw new IllegalArgumentException("원산지 상품타입 값이 올바르지 않아요: " + originType);
+        }
+        if (originCode != null) {
+            if (!esmOriginRepository.existsById(originCode)) {
+                throw new IllegalArgumentException("존재하지 않는 G마켓 원산지 코드입니다: " + originCode);
+            }
+            if (originType == null) {
+                throw new IllegalArgumentException("G마켓 원산지를 선택했다면 원산지 상품타입도 함께 선택해 주세요.");
+            }
+        }
+        product.setOriginCode(originCode);
+        product.setOriginProductType(originType);
+    }
+
+    private String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
+    }
+
     private void applyRequest(Product product, ProductRequest req) {
         if (req.barcode() == null || req.barcode().isBlank()) {
             throw new IllegalArgumentException("바코드는 필수 항목입니다.");
@@ -166,6 +237,7 @@ public class ProductService {
         product.setCategory3(resolveCategory3(req.category3Id()));
         product.setBrand(resolveBrand(req.brandId()));
         product.setCountryOfOrigin(req.countryOfOrigin());
+        applyGmarketInfo(product, req);
         // 프론트에서 항상 "해당사항없음" 또는 입력값을 보내주지만, 혹시 비어오는 경우(대량등록 등)를 대비한 기본값입니다.
         product.setCertification(req.certification() != null && !req.certification().isBlank() ? req.certification() : "해당사항없음");
         product.setSellerPrice1(req.sellerPrice1());

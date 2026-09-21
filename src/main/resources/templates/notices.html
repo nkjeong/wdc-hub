@@ -65,7 +65,7 @@
           searchPlaceholder='상품명, 제조사, 공급사로 검색',
           showKbdHint=false,
           showCategoryBtn=false,
-          avatarText=${#strings.isEmpty(companyName) ? '회' : #strings.substring(companyName, 0, 1)},
+          avatarText=${avatarText},
           companyName=${companyName},
           showExport=false,
           showCalcBtn=false,
@@ -85,7 +85,7 @@
           <div th:if="${#lists.isEmpty(notices)}" class="notice-empty">아직 등록된 공지사항이 없어요.</div>
 
           <div class="notice-list" th:unless="${#lists.isEmpty(notices)}">
-            <details class="notice-item" th:each="n : ${notices}">
+            <details class="notice-item" th:each="n : ${notices}" th:id="'notice-' + ${n.id}">
               <summary>
                 <span class="tag-badge" th:attr="data-label=${n.tagLabel}" th:text="${n.tagLabel}"></span>
                 <span class="n-title" th:text="${n.title}"></span>
@@ -120,5 +120,18 @@
 </div>
 
 <script th:src="@{/js/ticker.js}"></script>
+<script>
+  // 상단 티커에서 공지를 눌러 들어오면(주소 끝 #notice-번호) 그 공지가 자동으로 펼쳐지고 화면 가운데로 옵니다.
+  (function () {
+    function openFromHash() {
+      var h = location.hash;
+      if (!h || h.indexOf('#notice-') !== 0) return;
+      var el = document.getElementById(h.slice(1));
+      if (el && el.tagName === 'DETAILS') { el.open = true; el.scrollIntoView({ block: 'center' }); }
+    }
+    openFromHash();
+    window.addEventListener('hashchange', openFromHash);
+  })();
+</script>
 </body>
 </html>

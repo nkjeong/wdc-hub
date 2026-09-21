@@ -10,9 +10,22 @@
       integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 <link rel="stylesheet" th:href="@{/css/dashboard.css}">
 <link rel="stylesheet" th:href="@{/css/categories.css}">
+<style>
+  /* 상단바 검색 결과 (검색어를 입력했을 때만 보입니다) */
+  .cat-search-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; }
+  .cat-search-item{
+    display:block; width:100%; text-align:left; padding:9px 12px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg-raise); color:var(--text); font-size:13px; font-family:inherit; cursor:pointer; word-break:break-word;
+  }
+  .cat-search-item:hover, .cat-search-item:focus-visible{ border-color:var(--gold); color:var(--gold); outline:none; }
+  .cat-search-item .sep{ color:var(--text-faint); margin:0 6px; }
+  .cat-search-item .lv{ color:var(--text-faint); font-size:11px; margin-left:8px; }
+  .cat-search-empty, .cat-search-more{ font-size:12.5px; color:var(--text-faint); padding:8px 2px; }
+</style>
 </head>
 <!-- data-api-base: 카테고리 JSON API 기본 경로. categories.js에서 fetch 호출 시 사용합니다. -->
-<body th:attr="data-api-base=@{/admin/categories}">
+<!-- data-menu-api: 1~3차 전체 트리를 한 번에 주는 API. 상단바 검색창의 검색에 사용합니다. -->
+<body th:attr="data-api-base=@{/admin/categories}, data-menu-api=@{/categories/menu}">
 
 <div class="ticker">
   <div class="ticker-track" id="tickerTrack"></div>
@@ -39,7 +52,17 @@
         <div class="page-title">카테고리관리<span>1차 카테고리를 선택하면 2차가, 2차를 선택하면 3차 목록이 나타나요</span></div>
       </div>
 
-      <div class="row-3">
+      <!-- 검색 결과: 상단바 검색창에 입력하면 나타납니다. 결과를 누르면 아래 1·2·3차 목록이 그 카테고리로 이동해요. -->
+      <div class="panel" id="catSearchPanel" style="display:none; margin-bottom:16px;">
+        <div class="panel-head">
+          <div class="panel-title">검색 결과<span class="n" id="catSearchCount">0건</span></div>
+        </div>
+        <div class="panel-body">
+          <ul class="cat-search-list" id="catSearchList"></ul>
+        </div>
+      </div>
+
+      <div class="row-3" id="catColumns">
 
         <!-- 1차 카테고리 -->
         <div class="panel">

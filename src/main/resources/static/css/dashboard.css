@@ -16,6 +16,7 @@
     --red: #F0615B;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
     --sans: 'Nanum Gothic', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    color-scheme: dark;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.4; -webkit-font-smoothing:antialiased;}
@@ -38,13 +39,36 @@
   }
   .ticker::before{ left:0; background:linear-gradient(90deg, var(--bg-raise), transparent); }
   .ticker::after{ right:0; background:linear-gradient(270deg, var(--bg-raise), transparent); }
-  .ticker-track{ display:flex; gap:36px; animation: scroll-left 38s linear infinite; padding-left:24px; }
+  /* 티커는 "같은 내용의 묶음(.tick-group) 2개"를 이어 붙이고, 묶음 하나의 폭만큼만 이동한 뒤 처음으로 돌아갑니다.
+     묶음 끝에 gap과 같은 여백(padding-right)을 넣어서, 돌아오는 순간에도 간격이 똑같아 이음매가 보이지 않습니다.
+     이동 거리(--ticker-shift)와 시간(--ticker-duration)은 ticker.js가 실제 폭을 재서 채웁니다. */
+  .ticker-track{
+    display:flex; width:max-content; flex-shrink:0;
+    animation: ticker-scroll var(--ticker-duration, 40s) linear infinite;
+    will-change: transform;
+  }
+  .tick-group{ display:flex; flex-shrink:0; align-items:center; gap:36px; padding-right:36px; }
   .ticker:hover .ticker-track{ animation-play-state:paused; }
-  @keyframes scroll-left{ from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
-  .tick{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--text-dim); }
-  .tick b{ color:var(--text); font-weight:500; }
+  @keyframes ticker-scroll{
+    from{ transform:translate3d(0,0,0); }
+    to{ transform:translate3d(var(--ticker-shift, -50%),0,0); }
+  }
+  @media (prefers-reduced-motion: reduce){ .ticker-track{ animation:none; } }
+  .tick{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; color:var(--text-dim); flex-shrink:0; }
+  .tick b{ color:var(--text); font-weight:500; max-width:380px; overflow:hidden; text-overflow:ellipsis; }
+  a.tick:hover b{ color:var(--gold); }
   .tick.up{ color:var(--green); }
   .tick.down{ color:var(--red); }
+  .tick-tag{
+    display:inline-block; padding:1px 7px; border-radius:4px; font-family:var(--sans); font-size:10.5px; font-weight:700;
+    background:#6c757d; color:#fff; white-space:nowrap;
+  }
+  .tick-tag[data-label="업데이트"]{ background:#0d6efd; }
+  .tick-tag[data-label="점검"]{ background:#dc6b19; }
+  .tick-tag[data-label="안내"]{ background:#6c757d; }
+  .tick-tag[data-label="신규"]{ background:#198754; }
+  .tick-tag[data-label="소비자가"]{ background:#7b4fc9; }
+  .tick-tag[data-label="단가인상"]{ background:#c62f3d; }
 
   /* ---------- app shell ---------- */
   .shell{ display:grid; grid-template-columns:220px 1fr; min-height:calc(100vh - 34px); }
@@ -700,3 +724,39 @@ button:disabled{ cursor:default; }
 .page-btn:hover:not(:disabled):not(.active){ border-color:#3A4150; color:var(--text); }
 .page-btn.active{ background:var(--gold); color:#1A1400; border-color:var(--gold); font-weight:700; }
 .page-btn:disabled{ opacity:.35; cursor:default; }
+
+
+/* ============================================================
+   라이트 모드 — 상단바의 테마 버튼으로 바꾸며, 선택은 브라우저에 저장됩니다.
+   색은 위쪽 :root의 변수 이름을 그대로 두고 값만 밝게 바꿉니다.
+   ============================================================ */
+:root[data-theme="light"]{
+  --bg: #F2F4F8;
+  --bg-raise: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-2: #F0F2F6;
+  --line: #D5DAE3;
+  --line-soft: #E6E9EF;
+  --text: #1B1F27;
+  --text-dim: #566072;
+  --text-faint: #8791A1;
+  --gold: #B8860B;
+  --gold-dim: #DDBE6A;
+  --blue: #2F5FDB;
+  --green: #178A54;
+  --amber: #B7791F;
+  --red: #D6403A;
+  color-scheme: light;
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb{ background:#C3C9D4; }
+:root[data-theme="light"] .btn-close-white{ filter:none !important; }
+
+/* 카카오 아이콘은 노란 바탕에 어두운 글자로 (밝은 배경에서도 잘 보이게) */
+:root[data-theme="light"] .icon-btn.kakao-btn{ background:#FEE500; border-color:#E6CE00; color:#3C1E1E; }
+:root[data-theme="light"] .icon-btn.kakao-btn:hover{ background:#FFEF5A; color:#3C1E1E; }
+
+/* 테마 전환 버튼: 다크 모드에서는 해(라이트로 전환), 라이트 모드에서는 달(다크로 전환) 아이콘을 보여줍니다 */
+.theme-toggle{ cursor:pointer; }
+.theme-toggle .ic-moon{ display:none; }
+:root[data-theme="light"] .theme-toggle .ic-sun{ display:none; }
+:root[data-theme="light"] .theme-toggle .ic-moon{ display:block; }

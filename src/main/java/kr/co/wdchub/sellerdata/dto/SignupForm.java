@@ -7,6 +7,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 public class SignupForm {
@@ -53,4 +56,8 @@ public class SignupForm {
 
     // 사업자등록증 파일 (선택 첨부, JPG/PNG/PDF)
     private MultipartFile businessLicenseFile;
+
+    // 오픈마켓 판매자 아이디 (선택 입력). 한 사이트에 여러 개일 수 있어서 (사이트, 아이디) 줄을 원하는 만큼 받습니다.
+    // 폼 필드 이름: marketAccounts[0].site, marketAccounts[0].accountId, marketAccounts[1].site ...
+    private List<MarketAccountInput> marketAccounts = new ArrayList<>();
 }
