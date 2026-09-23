@@ -8,7 +8,9 @@ const PAGE_SIZE = 10;
 let allBrands = [];
 let currentPage = 1;
 let editingId = null; // null이면 등록 모드, 값이 있으면 수정 모드
-let searchQuery = ''; // 상단바 검색창에 입력한 검색어 (띄어쓰기로 나눈 모든 단어가 들어 있는 브랜드만 보여줍니다)
+let featuredIds = [];   // 대시보드 "주요 브랜드"로 고른 브랜드 id (체크한 순서 그대로, 서버에 저장된 것과 비교해 변경 여부를 판단)
+let featuredSavedIds = []; // 서버에 마지막으로 저장된 값 (변경 여부 비교용)
+const FEATURED_API = '/admin/featured-brands';
 
 const tableBody = document.getElementById('brandTableBody');
 const brandCountEl = document.getElementById('brandCount');
@@ -18,6 +20,9 @@ const formTitle = document.getElementById('brandFormTitle');
 const editOnlyFields = document.getElementById('editOnlyFields');
 const brandForm = document.getElementById('brandForm');
 const category1Select = document.getElementById('brandCategory1');
+const featuredOrderList = document.getElementById('featuredOrderList');
+const featuredCountEl = document.getElementById('featuredCount');
+const btnSaveFeatured = document.getElementById('btnSaveFeatured');
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -58,14 +63,14 @@ async function loadCategory1Options() {
 // ── 브랜드 목록 ──────────────────────────────
 
 async function loadBrands() {
-  tableBody.innerHTML = '<tr class="empty-row"><td colspan="11">불러오는 중...</td></tr>';
+  tableBody.innerHTML = '<tr class="empty-row"><td colspan="12">불러오는 중...</td></tr>';
   try {
     allBrands = await fetchJSON(`${API_BASE}/list`);
     currentPage = 1;
     renderTable();
     renderPagination();
   } catch (e) {
-    tableBody.innerHTML = `<tr class="empty-row"><td colspan="11">${escapeHtml(e.message)}</td></tr>`;
+    tableBody.innerHTML = `<tr class="empty-row"><td colspan="12">${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -76,39 +81,28 @@ function importTypeLabel(type) {
   return '<span class="type-pill">-</span>';
 }
 
-// 검색: 브랜드코드, 브랜드명(국문/영문), 제조사, 수입사, 취급상품, 원산지, 카테고리 중에서
-// 띄어쓰기로 나눈 모든 단어가 들어 있는 브랜드만 남깁니다 (AND 검색).
-function getFilteredBrands() {
-  if (!searchQuery) return allBrands;
-  const match = window.SearchUtils ? SearchUtils.matcher(searchQuery) : null;
-  const q = searchQuery.toLowerCase();
-  return allBrands.filter((b) => {
-    const fields = [b.brandCode, b.brandNameKr, b.brandNameEn, b.manufacturerName, b.importerName,
-                    b.productSummary, b.countryOfOrigin, b.category1Name];
-    return match ? match(fields) : fields.some((f) => (f || '').toLowerCase().includes(q));
-  });
-}
-
 function renderTable() {
-  const rows = getFilteredBrands();
-  brandCountEl.textContent = searchQuery ? `${rows.length}건 (전체 ${allBrands.length}건)` : `${allBrands.length}건`;
+  brandCountEl.textContent = allBrands.length + '건';
 
   if (allBrands.length === 0) {
-    tableBody.innerHTML = '<tr class="empty-row"><td colspan="11">등록된 브랜드가 없어요. 위의 "브랜드 등록" 버튼으로 추가해보세요.</td></tr>';
-    return;
-  }
-  if (rows.length === 0) {
-    tableBody.innerHTML = '<tr class="empty-row"><td colspan="11">검색 결과가 없어요. 다른 검색어로 찾아 보세요.</td></tr>';
+    tableBody.innerHTML = '<tr class="empty-row"><td colspan="12">등록된 브랜드가 없어요. 위의 "브랜드 등록" 버튼으로 추가해보세요.</td></tr>';
     return;
   }
 
   const start = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = rows.slice(start, start + PAGE_SIZE);
+  const pageItems = allBrands.slice(start, start + PAGE_SIZE);
 
   tableBody.innerHTML = pageItems.map((b) => `
     <tr>
+      <td>
+        <input type="checkbox" class="brand-featured-check" data-id="${b.id}"
+               ${featuredIds.includes(b.id) ? 'checked' : ''}
+               ${!featuredIds.includes(b.id) && featuredIds.length >= 10 ? 'disabled' : ''}
+               aria-label="${escapeHtml(b.brandNameKr)} 대시보드 노출">
+      </td>
       <td class="mono">${escapeHtml(b.brandCode)}</td>
       <td>
+        ${b.logoImageUrl ? `<img class="brand-logo-cell" src="${escapeHtml(b.logoImageUrl)}" alt="" style="margin-right:6px; vertical-align:middle;">` : ''}
         <button type="button" class="brand-name-link" data-id="${b.id}">${escapeHtml(b.brandNameKr)}</button>
         ${b.brandNameEn ? `<div class="brand-en">${escapeHtml(b.brandNameEn)}</div>` : ''}
       </td>
@@ -128,6 +122,20 @@ function renderTable() {
 tableBody.addEventListener('click', (e) => {
   const nameBtn = e.target.closest('.brand-name-link');
   const delBtn = e.target.closest('.btn-del-row');
+  const featuredCheck = e.target.closest('.brand-featured-check');
+
+  if (featuredCheck) {
+    const id = Number(featuredCheck.dataset.id);
+    if (featuredCheck.checked) {
+      if (featuredIds.length >= 10) { featuredCheck.checked = false; return; } // 안전장치 (버튼은 보통 비활성화되어 있음)
+      featuredIds.push(id);
+    } else {
+      featuredIds = featuredIds.filter((x) => x !== id);
+    }
+    renderTable();      // 다른 체크박스의 비활성화 여부(10개 도달)를 갱신
+    renderFeaturedOrder();
+    return;
+  }
 
   if (nameBtn) {
     const brand = allBrands.find((b) => b.id === Number(nameBtn.dataset.id));
@@ -142,16 +150,96 @@ async function handleDelete(id) {
   try {
     await fetchJSON(`${API_BASE}/${id}`, { method: 'DELETE' });
     if (editingId === id) closeForm();
+    if (featuredIds.includes(id)) {
+      featuredIds = featuredIds.filter((x) => x !== id); // 삭제된 브랜드는 대시보드 선택에서도 빠집니다
+      renderFeaturedOrder();
+    }
     await loadBrands();
   } catch (e) {
     alert(e.message);
   }
 }
 
+// ── 대시보드 "주요 브랜드" 선택 ────────────────
+
+const featuredSaveMsgEl = document.getElementById('featuredSaveMsg');
+let featuredSaveMsgTimer = null;
+
+function showFeaturedSaveMsg(text, ok) {
+  clearTimeout(featuredSaveMsgTimer);
+  featuredSaveMsgEl.textContent = text;
+  featuredSaveMsgEl.className = 'featured-save-msg ' + (ok ? 'ok' : 'err');
+  if (ok) {
+    featuredSaveMsgTimer = setTimeout(() => {
+      featuredSaveMsgEl.textContent = '';
+      featuredSaveMsgEl.className = 'featured-save-msg';
+    }, 4000);
+  }
+}
+
+function renderFeaturedOrder() {
+  featuredCountEl.textContent = `${featuredIds.length}/10`;
+
+  if (featuredIds.length === 0) {
+    featuredOrderList.innerHTML = '<li class="featured-order-empty">아직 고른 브랜드가 없어요.</li>';
+  } else {
+    featuredOrderList.innerHTML = featuredIds.map((id, i) => {
+      const b = allBrands.find((x) => x.id === id);
+      const name = b ? b.brandNameKr : `#${id}`;
+      const logo = b && b.logoImageUrl ? `<img class="logo" src="${escapeHtml(b.logoImageUrl)}" alt="">` : '';
+      return `<li class="featured-chip"><span class="num">${i + 1}</span>${logo}<span>${escapeHtml(name)}</span>
+        <button type="button" class="x" data-id="${id}" aria-label="${escapeHtml(name)} 선택 해제">✕</button></li>`;
+    }).join('');
+  }
+
+  const changed = JSON.stringify(featuredIds) !== JSON.stringify(featuredSavedIds);
+  btnSaveFeatured.disabled = !changed;
+  if (changed) showFeaturedSaveMsg('', true); // 선택이 바뀌면 이전 저장 결과 메시지는 지웁니다
+}
+
+featuredOrderList.addEventListener('click', (e) => {
+  const btn = e.target.closest('.x');
+  if (!btn) return;
+  const id = Number(btn.dataset.id);
+  featuredIds = featuredIds.filter((x) => x !== id);
+  renderTable();
+  renderFeaturedOrder();
+});
+
+async function loadFeaturedBrands() {
+  try {
+    const ids = await fetchJSON(FEATURED_API);
+    featuredIds = Array.isArray(ids) ? ids.slice(0, 10) : [];
+    featuredSavedIds = [...featuredIds];
+  } catch (e) {
+    featuredIds = [];
+    featuredSavedIds = [];
+  }
+  renderFeaturedOrder();
+}
+
+btnSaveFeatured.addEventListener('click', async () => {
+  btnSaveFeatured.disabled = true;
+  showFeaturedSaveMsg('저장하는 중...', true);
+  try {
+    await fetchJSON(FEATURED_API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(featuredIds),
+    });
+    featuredSavedIds = [...featuredIds];
+    renderFeaturedOrder();
+    showFeaturedSaveMsg(`대시보드 주요 브랜드 ${featuredIds.length}개를 저장했어요.`, true);
+  } catch (e) {
+    showFeaturedSaveMsg(e.message, false);
+    btnSaveFeatured.disabled = false;
+  }
+});
+
 // ── 페이지네이션 ──────────────────────────────
 
 function renderPagination() {
-  const totalPages = Math.max(1, Math.ceil(getFilteredBrands().length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allBrands.length / PAGE_SIZE));
   paginationEl.innerHTML = '';
 
   if (totalPages <= 1) return;
@@ -174,23 +262,11 @@ function renderPagination() {
 }
 
 function goToPage(page) {
-  const totalPages = Math.max(1, Math.ceil(getFilteredBrands().length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allBrands.length / PAGE_SIZE));
   if (page < 1 || page > totalPages) return;
   currentPage = page;
   renderTable();
   renderPagination();
-}
-
-// ── 상단바 검색창 연동 (입력하는 즉시 목록이 걸러져요) ──────────────
-
-const topSearchInput = document.getElementById('topbarSearchInput');
-if (topSearchInput) {
-  topSearchInput.addEventListener('input', () => {
-    searchQuery = topSearchInput.value.trim();
-    currentPage = 1;
-    renderTable();
-    renderPagination();
-  });
 }
 
 // ── 등록/수정 폼 ──────────────────────────────
@@ -202,6 +278,8 @@ function resetForm() {
   document.getElementById('useYn').checked = true;
   document.getElementById('brandNameDupWarning').textContent = '';
   brandNameConfirmedValue = null;
+  document.getElementById('logoField').style.display = 'none';
+  renderLogoPreview(null);
 }
 
 function openCreateForm() {
@@ -211,6 +289,16 @@ function openCreateForm() {
   editOnlyFields.style.display = 'none';
   formPanel.style.display = 'block';
   formPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 로고 미리보기 칸을 채웁니다. url이 없으면 "로고 없음"을 보여줍니다.
+function renderLogoPreview(url) {
+  const preview = document.getElementById('logoPreview');
+  const removeBtn = document.getElementById('btnRemoveLogo');
+  preview.innerHTML = url
+    ? `<img src="${escapeHtml(url)}" alt="">`
+    : '<span class="logo-preview-empty">로고 없음</span>';
+  removeBtn.style.display = url ? '' : 'none';
 }
 
 function openEditForm(brand) {
@@ -228,6 +316,9 @@ function openEditForm(brand) {
   category1Select.value = brand.category1Id || '';
   document.getElementById('sortOrder').value = brand.sortOrder ?? '';
   document.getElementById('useYn').checked = !!brand.useYn;
+
+  document.getElementById('logoField').style.display = 'block';
+  renderLogoPreview(brand.logoImageUrl);
 
   editOnlyFields.style.display = 'grid';
   formPanel.style.display = 'block';
@@ -350,10 +441,59 @@ document.getElementById('brandNameUseBtn').addEventListener('click', () => {
   warningEl.textContent = `"${typed}"(으)로 사용하도록 확정했어요.`;
 });
 
+// ── 로고 업로드 / 삭제 (수정 모드에서만, 시놀로지 NAS에 저장) ────
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+const LOGO_ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'webp'];
+
+document.getElementById('logoFileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  e.target.value = ''; // 같은 파일을 다시 선택해도 change가 동작하도록 매번 비웁니다
+  if (!file || !editingId) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!LOGO_ALLOWED_EXT.includes(ext)) { alert('JPG, PNG, WEBP 파일만 올릴 수 있어요.'); return; }
+  if (file.size > MAX_LOGO_BYTES) { alert('로고 이미지는 5MB 이하만 올릴 수 있어요.'); return; }
+
+  const hint = document.getElementById('logoHint');
+  hint.textContent = '업로드하는 중...';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const result = await fetchJSON(`${API_BASE}/${editingId}/logo`, { method: 'POST', body: fd });
+    renderLogoPreview(result.logoImageUrl);
+    const b = allBrands.find((x) => x.id === editingId);
+    if (b) b.logoImageUrl = result.logoImageUrl; // 목록/주요 브랜드 칩에도 바로 반영되도록
+    renderTable();
+    renderFeaturedOrder();
+    hint.textContent = '로고를 저장했어요.';
+  } catch (err) {
+    hint.textContent = err.message;
+  }
+});
+
+document.getElementById('btnRemoveLogo').addEventListener('click', async () => {
+  if (!editingId) return;
+  if (!confirm('로고 이미지를 삭제할까요?')) return;
+  try {
+    await fetchJSON(`${API_BASE}/${editingId}/logo`, { method: 'DELETE' });
+    renderLogoPreview(null);
+    const b = allBrands.find((x) => x.id === editingId);
+    if (b) b.logoImageUrl = null;
+    renderTable();
+    renderFeaturedOrder();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
 // ── 초기 로드 ──────────────────────────────
 
 loadCategory1Options();
-loadBrands();
+Promise.all([loadBrands(), loadFeaturedBrands()]).then(() => {
+  renderTable();        // 체크 표시가 반영되도록 다시 그림 (둘 중 늦게 끝난 것 기준)
+  renderFeaturedOrder(); // 브랜드명/로고가 채워지도록 다시 그림
+});
 
 // 다른 화면에서 "브랜드등록" 버튼으로 새 창을 띄울 때 ?action=create를 붙여서 여는데,
 // 그 경우 목록 화면 대신 바로 등록 폼을 열어줍니다.

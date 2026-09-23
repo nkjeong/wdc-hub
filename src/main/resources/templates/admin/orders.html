@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 주문확인</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<style>
+  .ao-table{ min-width:1000px; }   /* 창을 줄이면 표가 찌그러지는 대신 가로 스크롤이 생깁니다 */
+  .ao-pill{ display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:var(--surface-2); color:var(--text-dim); }
+  .ao-pill.RECEIVED{ background:rgba(91,140,255,.12); color:var(--blue); }
+  .ao-pill.CONFIRMED{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .ao-pill.PREPARING{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .ao-pill.SHIPPED{ background:rgba(52,201,126,.12); color:var(--green); }
+  .ao-pill.CANCELED{ background:rgba(240,97,91,.12); color:var(--red); }
+  .ao-mono{ font-family:var(--mono); font-size:12px; color:var(--text-dim); white-space:nowrap; }
+  .ao-sub{ font-size:11.5px; color:var(--text-faint); margin-top:2px; }
+  .ao-items-cell{ max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  tr.ao-row{ cursor:pointer; }
+  tr.ao-row:hover td{ background:rgba(128,128,128,.06); }
+  tr.ao-row.selected td{ background:rgba(212,166,42,.08); }
+  .ao-grid{ display:grid; grid-template-columns:120px 1fr; gap:8px 14px; font-size:13px; margin-bottom:14px; }
+  .ao-grid dt{ color:var(--text-faint); font-weight:600; }
+  .ao-grid dd{ margin:0; word-break:break-word; }
+  .ao-detail-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:16px; }
+  .ao-detail-table th, .ao-detail-table td{ text-align:left; padding:7px 6px; border-bottom:1px solid var(--line-soft); }
+  .ao-detail-table th{ color:var(--text-faint); font-weight:600; }
+
+  .ao-log-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  .ao-log-table th, .ao-log-table td{ text-align:left; padding:8px 6px; border-bottom:1px solid var(--line-soft); }
+  .ao-log-table th{ color:var(--text-faint); font-weight:600; }
+  .ao-log-codes{ max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-dim); }
+  .ao-log-empty{ padding:16px 4px; color:var(--text-faint); font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='orders-admin')}"></aside>
+
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='회원, 주문번호, 상품명으로 검색',
+          showKbdHint=false, showCategoryBtn=false,
+          avatarText=${avatarText}, companyName=${companyName},
+          showExport=false, showCalcBtn=false, showBell=false,
+          searchNavUrl=null)}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">주문확인<span>물류 대행 주문을 확인하고 발송 단계를 처리해요</span></div>
+      </div>
+
+      <div class="tabs" id="orderStatusTabs">
+        <div class="tab active" data-status="">전체</div>
+        <div class="tab" data-status="RECEIVED">주문접수</div>
+        <div class="tab" data-status="CONFIRMED">주문확인</div>
+        <div class="tab" data-status="PREPARING">상품준비중</div>
+        <div class="tab" data-status="SHIPPED">발송완료</div>
+        <div class="tab" data-status="CANCELED">주문취소</div>
+      </div>
+
+      <!-- "주문접수" 탭에서만 보여요: 이 탭에서 엑셀을 내려받으면 자동으로 주문확인 처리되고, 그 기록이 여기 쌓여요 -->
+      <div class="panel" id="aoLogPanel" style="display:none;">
+        <div class="panel-head"><div class="panel-title">다운로드 내역<span class="hint-text" style="margin-left:8px;">이 탭에서 엑셀을 받으면 자동으로 주문확인 처리돼요</span></div></div>
+        <div class="panel-body" style="overflow-x:auto;">
+          <table class="ao-log-table">
+            <thead><tr><th style="width:150px">받은 시각</th><th style="width:90px">건수</th><th style="width:130px">처리자</th><th>주문번호</th></tr></thead>
+            <tbody id="aoLogBody"><tr><td colspan="4" class="ao-log-empty">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">주문 목록<span class="n" id="aoCount">0건</span></div>
+          <div class="panel-action">
+            <button type="button" class="btn" id="aoExportBtn">엑셀 다운로드</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="ao-table">
+            <thead>
+              <tr>
+                <th style="width:90px">상태</th>
+                <th style="width:150px">주문번호</th>
+                <th style="width:130px">주문일</th>
+                <th>회원</th>
+                <th>상품</th>
+                <th style="width:110px">합계</th>
+                <th style="width:130px">송장</th>
+              </tr>
+            </thead>
+            <tbody id="aoBody"><tr class="empty-row"><td colspan="7">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" id="aoFormPanel" style="display:none;">
+        <div class="panel-head">
+          <div class="panel-title">주문 상세 · 처리</div>
+          <div class="panel-action"><button type="button" id="aoCloseBtn" class="btn">닫기</button></div>
+        </div>
+        <div class="panel-body">
+          <dl class="ao-grid">
+            <dt>주문번호</dt><dd id="dCode"></dd>
+            <dt>주문일</dt><dd id="dDate"></dd>
+            <dt>회원</dt><dd id="dMember"></dd>
+            <dt>받는 분</dt><dd id="dReceiver"></dd>
+            <dt>배송 주소</dt><dd id="dAddress"></dd>
+            <dt>배송 메시지</dt><dd id="dMessage"></dd>
+          </dl>
+
+          <table class="ao-detail-table" id="dItemsTable">
+            <thead><tr><th>상품</th><th style="width:70px">수량</th><th style="width:100px; text-align:right;">금액</th></tr></thead>
+            <tbody id="dItemsBody"></tbody>
+          </table>
+          <div style="text-align:right; font-weight:700; margin:-8px 0 16px;">합계 <span id="dTotal"></span></div>
+
+          <div class="calc-row">
+            <div class="calc-field">
+              <label>처리 상태</label>
+              <select id="fStatus" class="calc-input">
+                <option value="RECEIVED">주문접수</option>
+                <option value="CONFIRMED">주문확인</option>
+                <option value="PREPARING">상품준비중</option>
+                <option value="SHIPPED">발송완료</option>
+                <option value="CANCELED">주문취소</option>
+              </select>
+            </div>
+            <div class="calc-field">
+              <label>택배사</label>
+              <input type="text" id="fCarrier" class="calc-input" placeholder="예: CJ대한통운">
+            </div>
+          </div>
+          <div class="calc-field">
+            <label>송장번호 <span id="fTrackReq" class="req" style="display:none;">*</span></label>
+            <input type="text" id="fTracking" class="calc-input" placeholder="발송완료로 바꾸려면 꼭 입력해 주세요">
+          </div>
+          <div class="calc-field">
+            <label>관리자 메모 <span class="opt">(회원에게는 안 보여요)</span></label>
+            <textarea id="fMemo" class="calc-input" rows="2" maxlength="500"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn gold" id="aoSaveBtn">저장</button>
+          </div>
+        </div>
+      </div>
+
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/admin-orders.js}"></script>
+</body>
+</html>

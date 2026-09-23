@@ -461,6 +461,7 @@ async function loadProducts() {
   brandChipListEl.innerHTML = '<div class="brand-chip-empty">불러오는 중...</div>';
   try {
     await Promise.all([fetchBrands(), fetchProducts()]);
+    applyBrandFromUrl(); // 대시보드의 "주요 브랜드"처럼 다른 화면에서 브랜드를 지정해 들어온 경우, 그 브랜드를 먼저 선택해 둡니다
     renderFeaturedProducts();
     renderBrandChips();
     renderProductList();
@@ -469,6 +470,20 @@ async function loadProducts() {
     brandChipListEl.innerHTML = `<div class="brand-chip-empty">${escapeHtml(e.message)}</div>`;
     tbody.innerHTML = `<tr class="empty-row"><td colspan="15">${escapeHtml(e.message)}</td></tr>`;
   }
+}
+
+// 주소의 brandId를 읽어서 그 브랜드를 자동으로 선택합니다 (카테고리별 상품 페이지의 category1Id 방식과 동일).
+// 예: /products/by-brand?brandId=12  →  id가 12인 브랜드를 선택한 상태로 화면이 열립니다.
+function applyBrandFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const brandId = params.get('brandId');
+  if (!brandId) return;
+
+  const brand = allBrands.find((b) => String(b.id) === brandId);
+  if (!brand) return; // 삭제되었거나 존재하지 않는 브랜드면 조용히 전체 목록을 보여줍니다
+
+  selectedBrandName = brand.brandNameKr;
+  currentPage = 1;
 }
 
 // ── 엑셀 다운로드 (페이징으로 안 보이는 부분까지 포함해서, 현재 선택된 브랜드의 전체 데이터) ──────

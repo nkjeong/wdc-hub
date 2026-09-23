@@ -279,9 +279,12 @@
         </div>
       </div>
 
-      <!-- 원래 공지사항이 있던 자리 — 공지사항은 오픈마켓 연동 상태 카드 자리로 옮기고, 여긴 비워둡니다 -->
-      <div class="panel empty-slot-panel">
-        <div class="panel-body empty-slot-body">준비 중</div>
+      <!-- 주요 브랜드 (관리자 > 브랜드관리에서 고른 브랜드, 최대 10개). 고른 브랜드가 없으면 이 영역은 자동으로 숨겨집니다 -->
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">주요 브랜드</div></div>
+        <div class="panel-body">
+          <div class="featured-brand-grid" id="featuredBrandGrid"></div>
+        </div>
       </div>
 
       <!-- footer -->
@@ -302,6 +305,7 @@
 <th:block th:replace="~{fragments/bootstrap-assets :: bootstrapJs}"></th:block>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script th:src="@{/js/ticker.js}"></script>
+<script th:src="@{/js/featured-brands.js}"></script>
 <script src="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.js"></script>
 <script th:src="@{/js/vendor/effect-super-flow.min.js}"></script>
 <script th:src="@{/js/dashboard-super-flow.js}"></script>

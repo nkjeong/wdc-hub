@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WDC-HUB — 주문하기</title>
+<meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}">
+<meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" th:href="@{/css/dashboard.css}">
+<style>
+  /* 이 화면 전용 — 다른 관리자 화면의 .tabs/.tab-panel 패턴을 그대로 따릅니다 */
+  .od-search{ position:relative; margin-bottom:12px; }
+  .od-search-input{ width:100%; background:var(--bg-raise); border:1px solid var(--line); border-radius:8px; color:var(--text);
+    font-family:inherit; font-size:13px; padding:10px 12px; box-sizing:border-box; }
+  .od-search-input:focus{ outline:none; border-color:var(--gold); }
+  .od-results{ position:absolute; z-index:20; left:0; right:0; top:100%; margin-top:4px; max-height:320px; overflow-y:auto;
+    background:var(--surface); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 24px rgba(0,0,0,.35); }
+  .od-result{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:9px 12px; background:none; border:none;
+    border-bottom:1px solid var(--line-soft); color:var(--text); font-size:12.5px; font-family:inherit; cursor:pointer; }
+  .od-result:last-child{ border-bottom:none; }
+  .od-result:hover, .od-result:focus-visible{ background:var(--surface-2); outline:none; }
+  .od-result img{ width:32px; height:32px; border-radius:6px; object-fit:cover; background:var(--surface-2); flex-shrink:0; }
+  .od-result .name{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .od-result .price{ font-family:var(--mono); color:var(--text-dim); flex-shrink:0; }
+  .od-empty-hint{ padding:10px 12px; font-size:12px; color:var(--text-faint); }
+
+  .od-cart{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+  .od-cart-empty{ text-align:center; color:var(--text-faint); padding:24px 12px; font-size:13px; border:1px dashed var(--line); border-radius:8px; }
+  .od-cart-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--bg-raise); }
+  .od-cart-row img{ width:40px; height:40px; border-radius:6px; object-fit:cover; background:var(--surface-2); flex-shrink:0; }
+  .od-cart-info{ flex:1; min-width:0; }
+  .od-cart-name{ font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .od-cart-opt{ font-size:11.5px; color:var(--text-dim); }
+  .od-qty{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .od-qty button{ width:26px; height:26px; border-radius:6px; border:1px solid var(--line); background:var(--surface); color:var(--text); cursor:pointer; }
+  .od-qty button:hover{ border-color:var(--gold); color:var(--gold); }
+  .od-qty input{ width:48px; text-align:center; background:var(--surface); border:1px solid var(--line); border-radius:6px; color:var(--text);
+    font-family:var(--mono); font-size:12.5px; padding:4px 2px; }
+  .od-line-total{ width:96px; text-align:right; font-family:var(--mono); font-size:13px; flex-shrink:0; }
+  .od-cart-remove{ background:none; border:none; color:var(--text-faint); cursor:pointer; font-size:16px; flex-shrink:0; padding:0 2px; }
+  .od-cart-remove:hover{ color:var(--red); }
+  .od-cart-total{ display:flex; justify-content:flex-end; gap:10px; padding-top:10px; border-top:1px solid var(--line-soft); font-size:14px; }
+  .od-cart-total b{ font-family:var(--mono); color:var(--gold); }
+
+  .od-error{ display:none; margin-bottom:12px; padding:9px 12px; border-radius:6px; background:rgba(240,97,91,.12); color:var(--red); font-size:13px; }
+
+  .od-list{ display:flex; flex-direction:column; gap:10px; }
+  details.od-item{ border:1px solid var(--line); border-radius:8px; }
+  details.od-item[open]{ border-color:var(--gold-dim); }
+  details.od-item > summary{ list-style:none; cursor:pointer; padding:13px 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; border-radius:8px; }
+  details.od-item > summary::-webkit-details-marker{ display:none; }
+  details.od-item > summary:hover{ background:var(--surface-2); }
+  .od-code{ font-family:var(--mono); font-size:12px; color:var(--text-dim); }
+  .od-summary-name{ flex:1; min-width:160px; font-weight:600; }
+  .od-date{ font-size:12px; color:var(--text-faint); font-family:var(--mono); }
+  .od-pill{ display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; background:var(--surface-2); color:var(--text-dim); }
+  .od-pill.RECEIVED{ background:rgba(91,140,255,.12); color:var(--blue); }
+  .od-pill.CONFIRMED{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .od-pill.PREPARING{ background:rgba(224,166,60,.14); color:var(--amber); }
+  .od-pill.SHIPPED{ background:rgba(52,201,126,.12); color:var(--green); }
+  .od-pill.CANCELED{ background:rgba(240,97,91,.12); color:var(--red); }
+  .od-body{ padding:4px 18px 18px; border-top:1px solid var(--line-soft); }
+
+  .od-steps{ display:flex; gap:4px; margin:14px 0; }
+  .od-step{ flex:1; text-align:center; padding:8px 4px; border-radius:6px; font-size:11.5px; background:var(--surface-2); color:var(--text-faint); }
+  .od-step.done{ background:rgba(212,166,42,.14); color:var(--gold); font-weight:600; }
+  .od-step.canceled{ background:rgba(240,97,91,.12); color:var(--red); font-weight:600; }
+
+  .od-detail-table{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:10px; }
+  .od-detail-table th, .od-detail-table td{ text-align:left; padding:7px 6px; border-bottom:1px solid var(--line-soft); }
+  .od-detail-table th{ color:var(--text-faint); font-weight:600; }
+  .od-addr{ margin-top:14px; font-size:12.5px; color:var(--text-dim); line-height:1.7; }
+  .od-track{ margin-top:10px; padding:9px 12px; border-radius:8px; background:rgba(52,201,126,.08); border:1px solid rgba(52,201,126,.3); font-size:12.5px; }
+  .od-empty{ text-align:center; color:var(--text-faint); padding:32px 12px; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<div class="shell">
+  <aside th:replace="~{fragments/sidebar :: sidebar(active='orders')}"></aside>
+
+  <div class="main">
+    <div th:replace="~{fragments/topbar :: topbar(
+          searchPlaceholder='상품명, 제조사, 공급사로 검색',
+          showKbdHint=false, showCategoryBtn=false,
+          avatarText=${avatarText}, companyName=${companyName},
+          showExport=false, showCalcBtn=false, showBell=false,
+          searchNavUrl=@{/products})}"></div>
+
+    <div class="content">
+      <div class="page-head">
+        <div class="page-title">주문하기<span>상품을 담아 물류 대행 주문을 접수하고, 발송 진행 상황을 확인할 수 있어요</span></div>
+      </div>
+
+      <div class="tabs" id="orderTabs">
+        <div class="tab active" data-tab="new">주문하기</div>
+        <div class="tab" data-tab="history">주문내역</div>
+      </div>
+
+      <!-- ── 주문하기 ── -->
+      <div class="panel tab-panel" id="orderNewPanel">
+        <div class="panel-head"><div class="panel-title">상품 담기</div></div>
+        <div class="panel-body">
+          <div class="od-search">
+            <input type="text" id="odSearchInput" class="od-search-input" placeholder="상품명, 바코드로 검색" autocomplete="off">
+            <div class="od-results" id="odResults" style="display:none;"></div>
+          </div>
+
+          <div class="od-cart" id="odCart"><div class="od-cart-empty">아직 담은 상품이 없어요. 위에서 검색해서 담아 주세요.</div></div>
+          <div class="od-cart-total" id="odCartTotal" style="display:none;">합계 <b id="odCartTotalValue">0원</b></div>
+        </div>
+      </div>
+
+      <div class="panel tab-panel" id="orderAddressPanel">
+        <div class="panel-head"><div class="panel-title">받는 분 정보</div></div>
+        <div class="panel-body">
+          <div class="calc-row">
+            <div class="calc-field"><label>받는 분 이름</label><input type="text" id="odName" class="calc-input" maxlength="50"></div>
+            <div class="calc-field"><label>연락처</label><input type="tel" id="odPhone" class="calc-input" placeholder="010-1234-5678" maxlength="13"></div>
+          </div>
+          <div class="calc-field">
+            <label>배송 주소 <span class="req">*</span></label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="odZonecode" class="calc-input" style="max-width:160px;" placeholder="우편번호" readonly>
+              <button type="button" class="btn" id="odFindAddr">주소찾기</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+              <input type="text" id="odAddress" class="calc-input" placeholder="주소찾기를 눌러 주소를 검색하세요" readonly>
+              <input type="text" id="odAddressDetail" class="calc-input" placeholder="상세주소 (동/호수 등)" maxlength="100">
+            </div>
+          </div>
+          <div class="calc-field">
+            <label>배송 메시지 <span class="opt">(선택)</span></label>
+            <input type="text" id="odMessage" class="calc-input" maxlength="200" placeholder="예: 문 앞에 놓아 주세요">
+          </div>
+
+          <div class="od-error" id="odError" role="alert"></div>
+          <div class="form-actions">
+            <button type="button" class="btn gold" id="odSubmit">주문 접수</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 주문내역 ── -->
+      <div class="panel tab-panel" id="orderHistoryPanel" style="display:none;">
+        <div class="panel-head"><div class="panel-title">내 주문 내역<span class="n" id="odHistoryCount">0건</span></div></div>
+        <div class="panel-body">
+          <div class="od-list" id="odHistoryList"><div class="od-empty">불러오는 중...</div></div>
+        </div>
+      </div>
+
+      <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+  </div>
+</div>
+
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script th:src="@{/js/ticker.js}"></script>
+<script th:inline="javascript">
+  window.ORDER_DEFAULTS = { name: /*[[${defaultName}]]*/ '', phone: /*[[${defaultPhone}]]*/ '' };
+</script>
+<script th:src="@{/js/order.js}"></script>
+</body>
+</html>

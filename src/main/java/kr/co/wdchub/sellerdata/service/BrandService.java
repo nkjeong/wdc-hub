@@ -8,6 +8,7 @@ import kr.co.wdchub.sellerdata.repository.BrandRepository;
 import kr.co.wdchub.sellerdata.repository.Category1Repository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ public class BrandService {
 
     private final BrandRepository brandRepository;
     private final Category1Repository category1Repository;
+    private final SynologyUploadService synologyUploadService;
 
     // ── 조회 ──────────────────────────────────────
 
@@ -98,6 +100,43 @@ public class BrandService {
         if (req.useYn() != null) brand.setUseYn(req.useYn());
     }
 
+    // ── 로고 이미지 (시놀로지 NAS 저장) ─────────────
+    // 브랜드를 먼저 등록한 뒤에만 로고를 올릴 수 있습니다 (등록 전에는 저장할 브랜드 id가 없어서).
+
+    private static final long MAX_LOGO_BYTES = 5L * 1024 * 1024;
+
+    @Transactional
+    public Brand updateLogo(Long id, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("로고 이미지 파일을 선택해 주세요.");
+        }
+        if (file.getSize() > MAX_LOGO_BYTES) {
+            throw new IllegalArgumentException("로고 이미지는 5MB 이하만 올릴 수 있어요.");
+        }
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다. id=" + id));
+
+        String oldUrl = brand.getLogoImageUrl();
+        String newUrl = synologyUploadService.upload(file); // 실패하면 예외가 나면서 아래 코드가 실행되지 않아 기존 로고가 유지됩니다
+        brand.setLogoImageUrl(newUrl);
+
+        if (oldUrl != null && !oldUrl.isBlank()) {
+            synologyUploadService.delete(oldUrl); // 새 로고 저장이 끝난 뒤에 옛 파일을 지웁니다
+        }
+        return brand;
+    }
+
+    @Transactional
+    public void removeLogo(Long id) {
+        Brand brand = brandRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다. id=" + id));
+        String oldUrl = brand.getLogoImageUrl();
+        brand.setLogoImageUrl(null);
+        if (oldUrl != null && !oldUrl.isBlank()) {
+            synologyUploadService.delete(oldUrl);
+        }
+    }
+
     // ── 삭제(실제 삭제) ────────────────────────
     // 참고: 나중에 Product가 브랜드를 참조하게 되면, 참조 중인 상품이 있는지도 함께 체크해야 합니다.
 
@@ -105,7 +144,11 @@ public class BrandService {
     public void deleteBrand(Long id) {
         Brand brand = brandRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다. id=" + id));
+        String logoUrl = brand.getLogoImageUrl();
         brandRepository.delete(brand);
+        if (logoUrl != null && !logoUrl.isBlank()) {
+            synologyUploadService.delete(logoUrl); // 브랜드 삭제가 끝난 뒤 NAS의 로고 파일도 지웁니다
+        }
     }
 
     // ── 내부 헬퍼 ──────────────────────────────────
